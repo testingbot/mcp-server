@@ -1,0 +1,49 @@
+{
+  "schemaVersion": "0.1.0",
+  "name": "@testingbot/mcp-server",
+  "version": "1.0.0",
+  "description": "TestingBot's official MCP Server for AI-powered testing automation. Manage browsers, tests, builds, screenshots, storage, team members, and tunnels through conversational interfaces.",
+  "icon": "icon.png",
+  "homepage": "https://github.com/testingbot/mcp-server",
+  "publisher": {
+    "name": "TestingBot",
+    "url": "https://testingbot.com"
+  },
+  "license": "MIT",
+  "runtime": "node",
+  "entrypoint": "dist/index.js",
+  "args": [],
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "testingbot-key": {
+        "type": "string",
+        "title": "TestingBot API Key",
+        "description": "Your TestingBot API key from https://testingbot.com/members/user/edit",
+        "sensitive": true
+      },
+      "testingbot-secret": {
+        "type": "string",
+        "title": "TestingBot API Secret",
+        "description": "Your TestingBot API secret from https://testingbot.com/members/user/edit",
+        "sensitive": true
+      }
+    },
+    "required": ["testingbot-key", "testingbot-secret"]
+  },
+  "categories": [
+    "testing",
+    "automation",
+    "browsers"
+  ],
+  "keywords": [
+    "testingbot",
+    "testing",
+    "selenium",
+    "browser-testing",
+    "mobile-testing",
+    "cross-browser",
+    "screenshots",
+    "automation"
+  ]
+}

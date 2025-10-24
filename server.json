@@ -1,0 +1,30 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-16/server.schema.json",
+  "name": "io.testingbot/mcp-server",
+  "description": "TestingBot's Official MCP Server for AI-powered testing automation",
+  "version": "1.0.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@testingbot/mcp-server",
+      "version": "1.0.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "TESTINGBOT_KEY",
+          "isRequired": true,
+          "isSecret": false,
+          "description": "TestingBot API key (also accepts TB_KEY or TESTINGBOT_USERNAME)"
+        },
+        {
+          "name": "TESTINGBOT_SECRET",
+          "isRequired": true,
+          "isSecret": true,
+          "description": "TestingBot API secret (also accepts TB_SECRET or TESTINGBOT_ACCESS_KEY)"
+        }
+      ]
+    }
+  ]
+}
