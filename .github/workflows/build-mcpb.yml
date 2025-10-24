@@ -2,9 +2,16 @@ name: "Build MCPB Bundle"
 
 on:
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag/Release to upload the MCPB bundle to (e.g., 1.0.0)'
+        required: false
+        type: string
   push:
     tags:
-      - 'v*'
+      - '*'
+  release:
+    types: [published]
 
 permissions:
   contents: write
@@ -46,7 +53,7 @@ jobs:
       - name: "Get version from package.json"
         id: get_version
         run: |
-          VERSION="v$(node -p 'require("./package.json").version')"
+          VERSION="$(node -p 'require("./package.json").version')"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: "List generated files"
@@ -63,10 +70,11 @@ jobs:
           if-no-files-found: error
 
       - name: "Upload MCPB to GitHub Release"
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.event.inputs.tag != '')
         uses: softprops/action-gh-release@v1
         with:
           files: "*.mcpb"
           fail_on_unmatched_files: true
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
