@@ -1,41 +1,29 @@
 {
-  "schemaVersion": "0.1.0",
+  "manifest_version": "0.2",
   "name": "@testingbot/mcp-server",
   "version": "1.0.0",
   "description": "TestingBot's official MCP Server for AI-powered testing automation. Manage browsers, tests, builds, screenshots, storage, team members, and tunnels through conversational interfaces.",
   "icon": "icon.png",
   "homepage": "https://github.com/testingbot/mcp-server",
-  "publisher": {
+  "author": {
     "name": "TestingBot",
     "url": "https://testingbot.com"
   },
-  "license": "MIT",
-  "runtime": "node",
-  "entrypoint": "dist/index.js",
-  "args": [],
-  "configSchema": {
-    "type": "object",
-    "properties": {
-      "testingbot-key": {
-        "type": "string",
-        "title": "TestingBot API Key",
-        "description": "Your TestingBot API key from https://testingbot.com/members/user/edit",
-        "sensitive": true
-      },
-      "testingbot-secret": {
-        "type": "string",
-        "title": "TestingBot API Secret",
-        "description": "Your TestingBot API secret from https://testingbot.com/members/user/edit",
-        "sensitive": true
+  "server": {
+    "type": "node",
+    "entry_point": "dist/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": [
+        "${__dirname}/dist/index.js"
+      ],
+      "env": {
+        "TESTINGBOT_KEY": "${testingbot-key}",
+        "TESTINGBOT_SECRET": "${testingbot-secret}"
       }
-    },
-    "required": ["testingbot-key", "testingbot-secret"]
+    }
   },
-  "categories": [
-    "testing",
-    "automation",
-    "browsers"
-  ],
+  "license": "MIT",
   "keywords": [
     "testingbot",
     "testing",
