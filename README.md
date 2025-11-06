@@ -10,7 +10,7 @@ TestingBot's official Model Context Protocol (MCP) server implementation. This s
 - 🖥️ **Live Testing** - Start interactive manual testing sessions on real browsers and devices
 - 🌐 **Browser & Device Management** - Query available browsers and real devices
 - 🧪 **Test Management** - Create, retrieve, update, and delete tests with comprehensive details
-- 📦 **Storage Management** - Upload and manage mobile app files (APK, IPA)
+- 📦 **Storage Management** - Upload and manage mobile app files (APK, IPA, ZIP)
 - 📸 **Screenshot Testing** - Take cross-browser screenshots
 - 🏗️ **Build Management** - Organize tests into builds
 - 👤 **User Account** - View and update account information
@@ -652,7 +652,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - 📧 Email: support@testingbot.com
 - 🐛 Issues: [GitHub Issues](https://github.com/testingbot/mcp-server/issues)
 - 📖 Documentation: [TestingBot Documentation](https://testingbot.com/support)
-- 💬 Community: [TestingBot Forum](https://testingbot.com/support/forums)
 
 ## Related
 
