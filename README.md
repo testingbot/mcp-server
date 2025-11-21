@@ -651,7 +651,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - 📧 Email: support@testingbot.com
 - 🐛 Issues: [GitHub Issues](https://github.com/testingbot/mcp-server/issues)
-- 📖 Documentation: [TestingBot Documentation](https://testingbot.com/support)
+- 📖 Documentation: [TestingBot MCP Documentation](https://testingbot.com/support/ai/mcp)
 
 ## Related
 
