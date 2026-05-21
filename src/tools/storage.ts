@@ -1,7 +1,98 @@
 import { z } from "zod";
+import path from "path";
+import fs from "fs";
 import { TestingBotConfig } from "../lib/types.js";
-import { handleMCPError, validateUrl } from "../lib/utils.js";
+import { handleMCPError } from "../lib/utils.js";
 import logger from "../lib/logger.js";
+
+const ALLOWED_UPLOAD_EXTENSIONS = new Set([".apk", ".ipa", ".zip"]);
+
+// Validate a local file path before handing it to the upload API.
+// Rejects: relative paths that can't be resolved, hidden files, disallowed extensions,
+// missing files, and non-regular files.
+function validateLocalUploadPath(input: string): string {
+  if (typeof input !== "string" || input.trim() === "") {
+    throw new Error("File path must be a non-empty string");
+  }
+
+  const resolved = path.resolve(input);
+  const base = path.basename(resolved);
+
+  if (base.startsWith(".")) {
+    throw new Error("Hidden files (dotfiles) are not allowed");
+  }
+
+  const ext = path.extname(base).toLowerCase();
+  if (!ALLOWED_UPLOAD_EXTENSIONS.has(ext)) {
+    throw new Error(
+      `Only ${[...ALLOWED_UPLOAD_EXTENSIONS].join(", ")} files may be uploaded (got "${ext || "no extension"}")`
+    );
+  }
+
+  let stat: fs.Stats;
+  try {
+    stat = fs.statSync(resolved);
+  } catch {
+    throw new Error(`File not found or not readable: ${resolved}`);
+  }
+  if (!stat.isFile()) {
+    throw new Error(`Path is not a regular file: ${resolved}`);
+  }
+
+  return resolved;
+}
+
+// Block common SSRF targets: loopback, link-local (incl. cloud metadata 169.254.169.254),
+// RFC1918 private ranges, IPv6 loopback / unique-local / link-local, and "localhost".
+function isBlockedHost(hostname: string): boolean {
+  const host = hostname.toLowerCase().replace(/^\[|\]$/g, "");
+
+  if (host === "localhost" || host.endsWith(".localhost")) return true;
+  if (host === "0.0.0.0" || host === "::" || host === "::1") return true;
+
+  // IPv4 literal
+  const v4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (v4) {
+    const [a, b] = [Number(v4[1]), Number(v4[2])];
+    if (a === 10) return true; // 10.0.0.0/8
+    if (a === 127) return true; // loopback
+    if (a === 169 && b === 254) return true; // link-local incl. metadata
+    if (a === 172 && b >= 16 && b <= 31) return true; // 172.16.0.0/12
+    if (a === 192 && b === 168) return true; // 192.168.0.0/16
+    if (a === 0) return true;
+    return false;
+  }
+
+  // IPv6 literal (rough but covers the common bad ranges)
+  if (host.includes(":")) {
+    if (host.startsWith("fc") || host.startsWith("fd")) return true; // unique-local
+    if (host.startsWith("fe80")) return true; // link-local
+    if (host === "::1") return true;
+  }
+
+  return false;
+}
+
+function validateRemoteUploadUrl(input: string): string {
+  let parsed: URL;
+  try {
+    parsed = new URL(input);
+  } catch {
+    throw new Error("Invalid URL");
+  }
+
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new Error(`URL protocol must be http or https (got "${parsed.protocol}")`);
+  }
+  if (parsed.username || parsed.password) {
+    throw new Error("URL must not contain embedded credentials");
+  }
+  if (isBlockedHost(parsed.hostname)) {
+    throw new Error(`Host "${parsed.hostname}" is not allowed (private / loopback / link-local)`);
+  }
+
+  return parsed.toString();
+}
 
 export default function addStorageTools(
   server: any,
@@ -18,9 +109,10 @@ export default function addStorageTools(
     },
     async (args: { localFilePath: string }) => {
       try {
-        logger.info({ path: args.localFilePath }, "Uploading file");
+        const safePath = validateLocalUploadPath(args.localFilePath);
+        logger.info({ path: safePath }, "Uploading file");
 
-        const result = await testingBotApi.uploadFile(args.localFilePath);
+        const result = await testingBotApi.uploadFile(safePath);
 
         return {
           content: [
@@ -44,13 +136,11 @@ export default function addStorageTools(
     },
     async (args: { remoteUrl: string }) => {
       try {
-        if (!validateUrl(args.remoteUrl)) {
-          throw new Error("Invalid URL provided");
-        }
+        const safeUrl = validateRemoteUploadUrl(args.remoteUrl);
 
-        logger.info({ url: args.remoteUrl }, "Uploading remote file");
+        logger.info({ url: safeUrl }, "Uploading remote file");
 
-        const result = await testingBotApi.uploadRemoteFile(args.remoteUrl);
+        const result = await testingBotApi.uploadRemoteFile(safeUrl);
 
         return {
           content: [

@@ -21,33 +21,62 @@ if (debugToFile) {
   logFilePath = path.join(logsDir, `debug.log`);
 }
 
-// Configure logger based on debug mode
-const logger = pino({
-  level: logLevel,
-  transport:
-    debugToFile && logFilePath
-      ? {
-          target: "pino-pretty",
-          options: {
-            colorize: false,
-            translateTime: "yyyy-mm-dd HH:MM:ss",
-            ignore: "pid,hostname",
-            destination: logFilePath,
-            mkdir: true,
-          },
-        }
-      : isDevMode
-        ? {
-            target: "pino-pretty",
-            options: {
-              colorize: true,
-              translateTime: "HH:MM:ss Z",
-              ignore: "pid,hostname",
-              destination: 2, // Write to stderr (fd 2) instead of stdout
-            },
-          }
-        : undefined,
-});
+// Redact known credential / sensitive fields from any logged object.
+const redactPaths = [
+  "*.api_key",
+  "*.api_secret",
+  "*.apiKey",
+  "*.apiSecret",
+  "*.password",
+  "*.authorization",
+  "*.Authorization",
+  "options.api_key",
+  "options.api_secret",
+  "args.localFilePath",
+  "args.remoteUrl",
+  "args.extra",
+  "headers.authorization",
+];
+
+// MCP servers communicate over stdio — stdout is reserved for JSON-RPC framing.
+// All log output MUST go to stderr (fd 2) or a file; never to stdout.
+const logger = (() => {
+  const base = { level: logLevel, redact: { paths: redactPaths, censor: "[redacted]" } };
+
+  if (debugToFile && logFilePath) {
+    return pino({
+      ...base,
+      transport: {
+        target: "pino-pretty",
+        options: {
+          colorize: false,
+          translateTime: "yyyy-mm-dd HH:MM:ss",
+          ignore: "pid,hostname",
+          destination: logFilePath,
+          mkdir: true,
+        },
+      },
+    });
+  }
+
+  if (isDevMode) {
+    return pino({
+      ...base,
+      transport: {
+        target: "pino-pretty",
+        options: {
+          colorize: true,
+          translateTime: "HH:MM:ss Z",
+          ignore: "pid,hostname",
+          destination: 2,
+        },
+      },
+    });
+  }
+
+  // Production: raw JSON straight to stderr — never stdout.
+  return pino(base, pino.destination(2));
+})();
 
 if (debugToFile && logFilePath) {
   // Log to stderr so it appears in Claude Desktop logs

@@ -9,23 +9,44 @@ const require = createRequire(import.meta.url);
 const TestingBot = require("testingbot-api");
 
 async function main() {
-  try {
-    logger.info("Starting TestingBot MCP Server...");
+  logger.info("Starting TestingBot MCP Server...");
 
-    const config = getConfig();
+  const config = getConfig();
 
-    const testingBotApi = new TestingBot({
-      api_key: config["testingbot-key"],
-      api_secret: config["testingbot-secret"],
-    });
+  const testingBotApi = new TestingBot({
+    api_key: config["testingbot-key"],
+    api_secret: config["testingbot-secret"],
+  });
 
-    const mcpServer = new TestingBotMcpServer(testingBotApi, config);
-    await mcpServer.run();
-  } catch (error) {
-    logger.error({ error }, "Failed to start server");
-    console.error("Error starting TestingBot MCP Server:", error);
-    process.exit(1);
-  }
+  const mcpServer = new TestingBotMcpServer(testingBotApi, config);
+
+  let shuttingDown = false;
+  const shutdown = async (signal: string, exitCode = 0) => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    logger.info({ signal }, "Shutting down TestingBot MCP Server");
+    try {
+      await mcpServer.close();
+    } finally {
+      process.exit(exitCode);
+    }
+  };
+
+  process.on("SIGINT", () => void shutdown("SIGINT"));
+  process.on("SIGTERM", () => void shutdown("SIGTERM"));
+  process.on("unhandledRejection", (reason) => {
+    logger.error({ reason }, "Unhandled promise rejection");
+    void shutdown("unhandledRejection", 1);
+  });
+  process.on("uncaughtException", (error) => {
+    logger.error({ error }, "Uncaught exception");
+    void shutdown("uncaughtException", 1);
+  });
+
+  await mcpServer.run();
 }
 
-main();
+main().catch((error) => {
+  logger.error({ error }, "Failed to start server");
+  process.exit(1);
+});

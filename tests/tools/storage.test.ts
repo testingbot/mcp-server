@@ -1,10 +1,14 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import fs from "fs";
+import os from "os";
+import path from "path";
 import addStorageTools from "../../src/tools/storage.js";
 
 describe("Storage Tools", () => {
   let serverMock: any;
   let testingBotApiMock: any;
   let configMock: any;
+  let tmpDir: string;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -26,31 +30,77 @@ describe("Storage Tools", () => {
       "testingbot-key": "test-key",
       "testingbot-secret": "test-secret",
     };
+
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "tb-mcp-storage-"));
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
   describe("uploadFile", () => {
-    it("should upload file successfully", async () => {
-      const mockResult = {
-        app_url: "tb://app123",
-      };
-
-      testingBotApiMock.uploadFile.mockResolvedValue(mockResult);
+    it("should upload an allowed file successfully", async () => {
+      const apkPath = path.join(tmpDir, "app.apk");
+      fs.writeFileSync(apkPath, "fake-apk");
+      testingBotApiMock.uploadFile.mockResolvedValue({ app_url: "tb://app123" });
 
       const tools = addStorageTools(serverMock, testingBotApiMock, configMock);
-      const result = await tools.uploadFile.handler({ localFilePath: "/path/to/app.apk" });
+      const result = await tools.uploadFile.handler({ localFilePath: apkPath });
 
-      expect(testingBotApiMock.uploadFile).toHaveBeenCalledWith("/path/to/app.apk");
+      expect(testingBotApiMock.uploadFile).toHaveBeenCalledWith(path.resolve(apkPath));
       expect(result.content[0].text).toContain("uploaded successfully");
       expect(result.content[0].text).toContain("tb://app123");
     });
 
     it("should handle upload errors", async () => {
+      const apkPath = path.join(tmpDir, "app.apk");
+      fs.writeFileSync(apkPath, "fake-apk");
       testingBotApiMock.uploadFile.mockRejectedValue(new Error("Upload failed"));
 
       const tools = addStorageTools(serverMock, testingBotApiMock, configMock);
-      const result = await tools.uploadFile.handler({ localFilePath: "/path/to/app.apk" });
+      const result = await tools.uploadFile.handler({ localFilePath: apkPath });
 
       expect(result.isError).toBe(true);
+    });
+
+    it("should reject disallowed extensions", async () => {
+      const badPath = path.join(tmpDir, "secret.env");
+      fs.writeFileSync(badPath, "SECRET=1");
+
+      const tools = addStorageTools(serverMock, testingBotApiMock, configMock);
+      const result = await tools.uploadFile.handler({ localFilePath: badPath });
+
+      expect(result.isError).toBe(true);
+      expect(testingBotApiMock.uploadFile).not.toHaveBeenCalled();
+    });
+
+    it("should reject dotfiles even with allowed extension", async () => {
+      const dotPath = path.join(tmpDir, ".hidden.apk");
+      fs.writeFileSync(dotPath, "fake");
+
+      const tools = addStorageTools(serverMock, testingBotApiMock, configMock);
+      const result = await tools.uploadFile.handler({ localFilePath: dotPath });
+
+      expect(result.isError).toBe(true);
+      expect(testingBotApiMock.uploadFile).not.toHaveBeenCalled();
+    });
+
+    it("should reject missing files", async () => {
+      const tools = addStorageTools(serverMock, testingBotApiMock, configMock);
+      const result = await tools.uploadFile.handler({
+        localFilePath: path.join(tmpDir, "missing.apk"),
+      });
+
+      expect(result.isError).toBe(true);
+      expect(testingBotApiMock.uploadFile).not.toHaveBeenCalled();
+    });
+
+    it("should reject directories", async () => {
+      const tools = addStorageTools(serverMock, testingBotApiMock, configMock);
+      const result = await tools.uploadFile.handler({ localFilePath: tmpDir });
+
+      expect(result.isError).toBe(true);
+      expect(testingBotApiMock.uploadFile).not.toHaveBeenCalled();
     });
   });
 
@@ -79,6 +129,26 @@ describe("Storage Tools", () => {
       const result = await tools.uploadRemoteFile.handler({ remoteUrl: "not-a-url" });
 
       expect(result.isError).toBe(true);
+      expect(testingBotApiMock.uploadRemoteFile).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ["file URI", "file:///etc/passwd"],
+      ["AWS metadata IP", "http://169.254.169.254/latest/meta-data/"],
+      ["loopback IPv4", "http://127.0.0.1/"],
+      ["loopback IPv6", "http://[::1]/"],
+      ["RFC1918 10.x", "http://10.0.0.1/payload.zip"],
+      ["RFC1918 192.168.x", "http://192.168.1.1/x"],
+      ["RFC1918 172.16.x", "http://172.16.5.4/x"],
+      ["localhost", "http://localhost:8080/"],
+      ["credentials in URL", "https://user:pass@example.com/"],
+      ["gopher protocol", "gopher://example.com/"],
+    ])("should reject SSRF target: %s", async (_label, url) => {
+      const tools = addStorageTools(serverMock, testingBotApiMock, configMock);
+      const result = await tools.uploadRemoteFile.handler({ remoteUrl: url });
+
+      expect(result.isError).toBe(true);
+      expect(testingBotApiMock.uploadRemoteFile).not.toHaveBeenCalled();
     });
   });
 

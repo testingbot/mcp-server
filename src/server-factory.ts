@@ -120,4 +120,12 @@ export class TestingBotMcpServer {
     await this.server.connect(transport);
     logger.info("TestingBot MCP Server running on stdio");
   }
+
+  public async close() {
+    try {
+      await this.server.close();
+    } catch (error) {
+      logger.error({ error }, "Error while closing MCP server");
+    }
+  }
 }

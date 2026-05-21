@@ -1,7 +1,7 @@
 {
   "manifest_version": "0.2",
   "name": "@testingbot/mcp-server",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "TestingBot's official MCP Server for AI-powered testing automation. Manage browsers, tests, builds, screenshots, storage, team members, and tunnels through conversational interfaces.",
   "icon": "icon.png",
   "homepage": "https://github.com/testingbot/mcp-server",
