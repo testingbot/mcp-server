@@ -20,6 +20,13 @@ export default function addTestTools(server: any, testingBotApi: any, _config: T
     return `https://testingbot.com/members/tests/${test.session_id}`;
   };
 
+  const formatBrowser = function (test: any): string {
+    const name = typeof test.browser === "string" ? test.browser.trim() : "";
+    const versionRaw = test.browser_version ?? test.version;
+    const version = versionRaw == null ? "" : String(versionRaw).trim();
+    return [name, version].filter(Boolean).join(" ");
+  };
+
   tools.getTests = server.tool(
     "getTests",
     "Retrieve a list of recent tests with optional pagination. Returns test details including status, browser, platform, video and duration.",
@@ -81,10 +88,7 @@ export default function addTestTools(server: any, testingBotApi: any, _config: T
             }
 
             // Browser and platform
-            const browser =
-              test.browser || test.browser_version
-                ? `${test.browser || ""}${test.browser_version || test.version || ""}`.trim()
-                : test.browser || "";
+            const browser = formatBrowser(test);
             if (browser) {
               formattedOutput += `- **Browser**: ${browser}\n`;
             }
@@ -175,10 +179,7 @@ export default function addTestTools(server: any, testingBotApi: any, _config: T
         }
 
         // Browser and platform
-        const browser =
-          test.browser || test.browser_version
-            ? `${test.browser || ""}${test.browser_version || test.version || ""}`.trim()
-            : test.browser || "";
+        const browser = formatBrowser(test);
         if (browser) {
           formattedOutput += `- **Browser**: ${browser}\n`;
         }

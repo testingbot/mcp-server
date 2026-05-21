@@ -64,6 +64,27 @@ describe("Test Tools", () => {
 
       expect(result.content[0].text).toContain("No tests found");
     });
+
+    it("formats browser and version with a separating space", async () => {
+      // Regression test: previous code produced "chrome120" (no space).
+      testingBotApiMock.getTests.mockResolvedValue({
+        data: [
+          { session_id: "a", browser: "chrome", version: "120" },
+          { session_id: "b", browser: "firefox", browser_version: "115" },
+          { session_id: "c", browser: "safari" }, // no version
+        ],
+        meta: {},
+      });
+
+      const tools = addTestTools(serverMock, testingBotApiMock, configMock);
+      const result = await tools.getTests.handler({});
+
+      expect(result.content[0].text).toContain("**Browser**: chrome 120");
+      expect(result.content[0].text).toContain("**Browser**: firefox 115");
+      expect(result.content[0].text).toContain("**Browser**: safari");
+      expect(result.content[0].text).not.toContain("chrome120");
+      expect(result.content[0].text).not.toContain("firefox115");
+    });
   });
 
   describe("getTestDetails", () => {
