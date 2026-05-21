@@ -9,7 +9,7 @@
     "url": "git+https://github.com/testingbot/mcp-server.git"
   },
   "scripts": {
-    "build": "npm run lint && npm run format && npm test && tsc",
+    "build": "npm run version:sync && npm run lint && npm run format && npm test && tsc",
     "start": "node dist/index.js",
     "dev": "NODE_ENV=development tsx watch --clear-screen=false src/index.ts",
     "test": "vitest run",
@@ -18,7 +18,10 @@
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
     "format": "prettier --write \"src/**/*.ts\"",
-    "format:check": "prettier --check \"src/**/*.ts\""
+    "format:check": "prettier --check \"src/**/*.ts\"",
+    "version:sync": "node scripts/sync-version.mjs",
+    "version:check": "node scripts/sync-version.mjs --check",
+    "version": "npm run version:sync && git add manifest.json server.json"
   },
   "bin": {
     "testingbot-mcp-server": "dist/index.js"
