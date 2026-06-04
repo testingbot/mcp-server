@@ -1,80 +1,91 @@
-name: "Build MCPB Bundle"
+name: Build MCPB bundle
+
+# Triggers on every GitHub release publish. Builds the .mcpb via the same
+# script developers use locally (scripts/build-mcpb.sh) so what gets attached
+# to the release is what they tested. Also runnable manually via
+# workflow_dispatch for re-builds or tag testing.
+#
+# Precondition: @testingbot/automation-mcp must already be on npm at the
+# version pinned in package.json. The mcpb build resolves it via `npm ci` —
+# nothing here publishes it. The publish order is:
+#   1. Bump and publish @testingbot/automation-mcp
+#   2. Bump @testingbot/mcp-server's automation-mcp dep + own version
+#   3. Tag & create the mcp-server release → this workflow runs
 
 on:
+  release:
+    types: [published]
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Tag/Release to upload the MCPB bundle to (e.g., 1.0.0)'
+        description: 'Tag to attach the .mcpb to (e.g., v1.2.0). Required when triggered manually.'
         required: false
         type: string
-  push:
-    tags:
-      - '*'
-  release:
-    types: [published]
 
 permissions:
-  contents: write
+  contents: write  # attaching release assets
 
 jobs:
-  build-mcpb:
-    runs-on: ubuntu-latest
-    steps:
-      - name: "Checkout source code"
-        uses: actions/checkout@v4
+  build:
+    # macOS chosen because appium-mcp pulls in appium-xcuitest-driver, which
+    # has macOS-native bits. Building on Linux installs only the linux/no-op
+    # variants; users on macOS would then be missing the iOS path. If you
+    # only ever target Linux/Windows clients, ubuntu-latest is ~10× cheaper.
+    runs-on: macos-latest
+    timeout-minutes: 20
 
-      - name: "Set up Node.js"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 22.x
+          node-version: '22'
+          cache: 'npm'
 
-      - name: "Install dependencies"
-        run: npm ci
-
-      - name: "Build the project"
-        run: npm run build
-
-      - name: "Install MCPB CLI"
+      - name: Install mcpb CLI
         run: npm install -g @anthropic-ai/mcpb
 
-      - name: "Validate manifest.json"
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build .mcpb
+        run: npm run mcpb
+
+      - name: Locate built artefact
+        id: artefact
         run: |
-          if [ ! -f "manifest.json" ]; then
-            echo "Error: manifest.json not found"
+          FILE=$(ls releases/*.mcpb | head -1)
+          if [[ -z "$FILE" ]]; then
+            echo "No .mcpb produced; check scripts/build-mcpb.sh output above." >&2
             exit 1
           fi
-          echo "manifest.json found, validating..."
-          cat manifest.json | jq '.' > /dev/null
-          echo "manifest.json is valid JSON"
+          NAME=$(basename "$FILE")
+          SIZE=$(du -h "$FILE" | awk '{print $1}')
+          echo "file=$FILE"  >> "$GITHUB_OUTPUT"
+          echo "name=$NAME"  >> "$GITHUB_OUTPUT"
+          echo "size=$SIZE"  >> "$GITHUB_OUTPUT"
+          echo "Built $NAME ($SIZE)"
 
-      - name: "Pack MCPB bundle"
-        run: mcpb pack
-
-      - name: "Get version from package.json"
-        id: get_version
-        run: |
-          VERSION="$(node -p 'require("./package.json").version')"
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: "List generated files"
-        run: |
-          echo "Looking for .mcpb files..."
-          ls -lah *.mcpb || echo "No .mcpb files found in root"
-          find . -name "*.mcpb" -type f
-
-      - name: "Upload MCPB bundle as artifact"
+      - name: Upload bundle as workflow artifact (always)
         uses: actions/upload-artifact@v4
         with:
-          name: testingbot-mcp-server-${{ steps.get_version.outputs.version }}.mcpb
-          path: "*.mcpb"
+          name: ${{ steps.artefact.outputs.name }}
+          path: ${{ steps.artefact.outputs.file }}
           if-no-files-found: error
+          retention-days: 30
 
-      - name: "Upload MCPB to GitHub Release"
-        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.event.inputs.tag != '')
-        uses: softprops/action-gh-release@v1
+      - name: Attach bundle to release
+        # Two conditions get an attached asset:
+        #   1. The workflow was triggered by a release publish.
+        #   2. A maintainer ran workflow_dispatch with an explicit tag input.
+        # Manual runs without a tag input only get the workflow-artifact above.
+        if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.event.inputs.tag != '')
+        uses: softprops/action-gh-release@v2
         with:
-          files: "*.mcpb"
-          fail_on_unmatched_files: true
+          files: ${{ steps.artefact.outputs.file }}
           tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

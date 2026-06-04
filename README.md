@@ -5,6 +5,14 @@
 
 TestingBot's official Model Context Protocol (MCP) server implementation. This server enables AI assistants to interact with TestingBot's testing infrastructure, allowing you to manage tests, browsers, devices, and more through conversational interfaces.
 
+## ⚡ One-Click Install
+
+[![Install in VS Code](https://img.shields.io/badge/Install-VS_Code-007ACC?style=for-the-badge&logo=visualstudiocode&logoColor=white)](https://testingbot.com/mcp/install?client=vscode) [![Install in Cursor](https://img.shields.io/badge/Install-Cursor-000000?style=for-the-badge&logo=cursor&logoColor=white)](https://testingbot.com/mcp/install?client=cursor)
+
+**Claude Desktop**: download `mcp-server.mcpb` from the [releases page](https://github.com/testingbot/mcp-server/releases) and double-click it. Claude will set up the TestingBot MCP server automatically.
+
+After install, set your credentials from [TestingBot account settings](https://testingbot.com/members/user/security).
+
 ## Features
 
 - 🖥️ **Live Testing** - Start interactive manual testing sessions on real browsers and devices
@@ -42,9 +50,29 @@ npm install @testingbot/mcp-server
 
 ### Configuration
 
+#### Recommended: log in with `tb_login` (no key/secret to copy)
+
+You don't have to find and paste API credentials. Install the server, leave the
+credentials blank, and just ask the agent:
+
+> Log me in to TestingBot.
+
+The agent calls the **`tb_login`** tool, which prints a short URL and code:
+
+1. Open the URL in your browser (e.g. `https://testingbot.com/device`).
+2. Enter the code, sign in if needed, and click **Authorize**.
+3. Tell the agent you've authorized — it calls `tb_login` again to finish.
+
+Your credentials are written to `~/.testingbot/credentials` (mode `0600`) and
+used by every subsequent tool call — no restart, no JSON editing, and no secret
+ever leaves the browser. This works in any MCP client (VS Code, Cursor, Cline,
+Claude Desktop, …). To use a different account, set `TESTINGBOT_PROFILE`; to
+relocate the file, set `TESTINGBOT_CONFIG_DIR`.
+
 #### Environment Variables
 
-Set your TestingBot credentials as environment variables:
+Alternatively (or for CI, where env vars take precedence over the file), set your
+TestingBot credentials as environment variables:
 
 ```bash
 export TESTINGBOT_KEY="your-api-key"
@@ -115,6 +143,15 @@ Add to `.cursor/mcp.json`:
   }
 }
 ```
+
+## 🤖 Let an AI Agent Drive a Remote Browser or Device
+
+This server already includes the automation tools from [`@testingbot/automation-mcp`](https://github.com/testingbot/automation-mcp) — installing this package gives the agent the ability to **actually drive** a remote browser or real mobile device on TestingBot's grid, not just manage resources.
+
+Just ask:
+> Open Safari 17 on macOS on TestingBot. Navigate to example.com and click the "More information" link.
+
+The agent will call `tb_openBrowser`, `tb_navigate`, `tb_snapshot`, `tb_click` — and surface a **live-view URL** so you can watch it in real time. For real iOS / Android devices, the bundled [`appium-mcp`](https://github.com/appium/appium-mcp) child gives the agent the full `appium_*` toolbelt (`appium_session_management`, `appium_gesture`, `appium_set_value`, `appium_screenshot`, ~30 more) — no separate install or config required. Just ask: _"Open an iPhone 15 Pro on iOS 17 on TestingBot, tap the login button, take a screenshot."_ See the [`@testingbot/automation-mcp` README](https://github.com/testingbot/automation-mcp#readme) for the full tool list, caveats (sessions are metered), and configuration options.
 
 ## Available Tools
 
@@ -530,6 +567,9 @@ npm run lint
 
 # Format code
 npm run format
+
+# Build the .mcpb bundle for Claude Desktop (see section below)
+npm run mcpb
 ```
 
 ### Running Locally
@@ -551,6 +591,73 @@ npx @modelcontextprotocol/inspector node dist/index.js
 ```
 
 Then open http://localhost:5173 in your browser.
+
+### Building the `.mcpb` bundle (Claude Desktop release)
+
+The `.mcpb` archive is what users double-click to install in Claude Desktop. The installer reads `manifest.json#user_config` and shows a credential prompt — no JSON editing or env-var fiddling.
+
+```bash
+# Prerequisites: mcpb CLI (one-time)
+npm install -g @anthropic-ai/mcpb
+
+# Build the bundle
+npm run mcpb
+```
+
+This runs `scripts/build-mcpb.sh`, which:
+
+1. Runs the full quality pipeline (`npm run build` → lint → format → test → tsc).
+2. Stages a clean tree in a temp directory (only `dist/`, `manifest.json`, `package.json`, `LICENSE`, `README.md`, `icon.png` if present).
+3. Runs `npm ci --omit=dev` inside staging — dev deps (typescript, eslint, vitest) never enter the bundle. `@testingbot/automation-mcp` is pulled from npm at the version pinned in `package.json`.
+4. Validates the manifest and runs `mcpb pack` honoring `.mcpbignore` (strips test fixtures, source maps, dependency changelogs).
+5. Writes `releases/testingbot-mcp-server-<version>.mcpb` and runs `mcpb info` on it.
+
+Output is roughly 160 MB — most of that is the bundled `appium-mcp` mobile driver stack (XCUITest, UiAutomator2). The bundle is paid for once at install, not at runtime.
+
+#### Sibling repo during development
+
+For active development on both `@testingbot/mcp-server` and `@testingbot/automation-mcp` in lockstep, use `npm run dev:rebuild` from this repo. It builds both, then `npm link`s the sibling into this repo's `node_modules` so edits in `../testingbot-automation-mcp/src/` take effect on the next rebuild without a republish.
+
+The link is one-shot — once set up, `dev:rebuild` notices it's in place and just builds. If you ever run `npm install` in this repo, the link is replaced with the registry copy; rerun `dev:rebuild` to restore.
+
+#### Releasing
+
+The release flow has two coordinated publish steps:
+
+1. **Publish `@testingbot/automation-mcp` to npm** (from `../testingbot-automation-mcp`):
+   ```bash
+   npm version patch    # or minor / major
+   npm publish          # publishConfig.access is "public" — handles scoped-pkg defaults
+   ```
+2. **Bump this repo to consume the new automation-mcp** and cut a release:
+   ```bash
+   npm install @testingbot/automation-mcp@latest   # updates package-lock.json
+   npm version patch                                # also syncs manifest.json + server.json
+   git push --follow-tags
+   # → Create a GitHub release at the new tag. The Build MCPB workflow
+   #   fires on release:published and attaches releases/*.mcpb to it.
+   ```
+
+The release CI (`.github/workflows/build-mcpb.yml`) runs `npm run mcpb` on `macos-latest` and uploads the bundle as both a workflow artifact (30-day retention) and a release asset. Manual re-build: trigger via the Actions tab → "Build MCPB bundle" → enter the tag.
+
+macOS is chosen so the bundled `appium-xcuitest-driver` carries its native bits. If you only target Linux/Windows users, you can switch the runner to `ubuntu-latest` for ~10× cheaper minutes — at the cost of iOS support in the bundled mobile path. Browser tools (via WebDriver) work cross-platform regardless.
+
+To validate the manifest without building:
+
+```bash
+npm run mcpb:validate
+```
+
+To inspect a built bundle:
+
+```bash
+mcpb info releases/testingbot-mcp-server-<version>.mcpb
+mcpb unpack releases/testingbot-mcp-server-<version>.mcpb /tmp/unpacked  # see what's inside
+```
+
+The bundle is unsigned. To sign for distribution, run `mcpb sign --self-signed` (smoke-test) or `mcpb sign` with a real cert. See `mcpb sign --help`.
+
+`releases/*.mcpb` is gitignored — upload the artefact to the GitHub releases page (or wherever your install URL points at) after building.
 
 ## Project Structure
 
@@ -589,9 +696,10 @@ testingbot-mcp-server/
 ### Authentication Errors
 
 If you see authentication errors:
-1. Verify your credentials at https://testingbot.com/members/user/edit
-2. Ensure environment variables are set correctly
-3. Check that there are no extra spaces in your credentials
+1. Run the `tb_login` tool (just ask the agent to "log me in to TestingBot") — the simplest fix, no key/secret needed
+2. Or verify your credentials at https://testingbot.com/members/user/security
+3. Ensure environment variables are set correctly (env vars override the `tb_login` credentials file)
+4. Check that there are no extra spaces in your credentials
 
 ### Connection Issues
 

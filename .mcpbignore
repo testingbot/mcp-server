@@ -1,0 +1,53 @@
+# Files excluded from the .mcpb bundle. See https://github.com/anthropics/mcpb
+# for full pattern semantics.
+
+# Source — we ship dist/ only.
+src/
+tests/
+docs/
+scripts/
+
+# Build / type artifacts not needed at runtime.
+**/*.map
+**/*.ts
+!**/*.d.ts
+**/tsconfig*.json
+
+# Tooling configs not needed at runtime.
+.github/
+.vscode/
+.idea/
+.eslintrc*
+eslint.config*
+.prettierrc*
+prettier.config*
+vitest.config*
+
+# VCS / OS noise.
+.git/
+.gitignore
+.gitattributes
+.DS_Store
+Thumbs.db
+
+# CI helpers and developer docs not needed at runtime.
+CONTRIBUTING.md
+CHANGELOG.md
+.npmignore
+
+# Test fixtures, examples, and changelogs inside dependencies.
+node_modules/**/test/
+node_modules/**/tests/
+node_modules/**/__tests__/
+node_modules/**/example/
+node_modules/**/examples/
+node_modules/**/.github/
+node_modules/**/.npmignore
+node_modules/**/CHANGELOG*
+node_modules/**/HISTORY*
+node_modules/**/HISTORY.md
+node_modules/**/man/
+
+# Output of this script itself.
+releases/
+*.mcpb

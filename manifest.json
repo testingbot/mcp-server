@@ -18,9 +18,25 @@
         "${__dirname}/dist/index.js"
       ],
       "env": {
-        "TESTINGBOT_KEY": "${testingbot-key}",
-        "TESTINGBOT_SECRET": "${testingbot-secret}"
+        "TESTINGBOT_KEY": "${user_config.testingbot-key}",
+        "TESTINGBOT_SECRET": "${user_config.testingbot-secret}"
       }
+    }
+  },
+  "user_config": {
+    "testingbot-key": {
+      "type": "string",
+      "title": "TestingBot API key",
+      "description": "Your TestingBot API key. Find it at https://testingbot.com/members/user/security",
+      "required": true,
+      "sensitive": true
+    },
+    "testingbot-secret": {
+      "type": "string",
+      "title": "TestingBot API secret",
+      "description": "Your TestingBot API secret. Find it at https://testingbot.com/members/user/security",
+      "required": true,
+      "sensitive": true
     }
   },
   "license": "MIT",

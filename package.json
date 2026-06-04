@@ -21,7 +21,10 @@
     "format:check": "prettier --check \"src/**/*.ts\"",
     "version:sync": "node scripts/sync-version.mjs",
     "version:check": "node scripts/sync-version.mjs --check",
-    "version": "npm run version:sync && git add manifest.json server.json"
+    "version": "npm run version:sync && git add manifest.json server.json",
+    "dev:rebuild": "bash scripts/dev.sh",
+    "mcpb": "bash scripts/build-mcpb.sh",
+    "mcpb:validate": "mcpb validate manifest.json"
   },
   "bin": {
     "testingbot-mcp-server": "dist/index.js"
@@ -54,6 +57,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.4",
+    "@testingbot/automation-mcp": "^0.1.0",
     "dotenv": "^16.4.5",
     "pino": "^9.6.0",
     "pino-pretty": "^13.0.0",
