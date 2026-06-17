@@ -43,10 +43,19 @@ export interface Build {
   [key: string]: any;
 }
 
+// Shape of the TestingBot `GET /v1/user` response. Note the API does NOT return
+// an `email` field, nor `minutes_used`/`minutes_limit`; available time is exposed
+// as `seconds`. All fields are optional so a partial response degrades cleanly.
 export interface UserInfo {
-  first_name: string;
-  last_name: string;
-  email: string;
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  plan?: string;
+  company?: string;
+  country?: string;
+  seconds?: number;
+  max_concurrent?: number;
+  max_concurrent_mobile?: number;
   [key: string]: any;
 }
 

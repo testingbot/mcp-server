@@ -22,27 +22,51 @@ describe("User Tools", () => {
   });
 
   describe("getUserInfo", () => {
-    it("formats full user info", async () => {
+    it("formats user info using the fields the API actually returns", async () => {
+      // Mirrors the real GET /v1/user payload: no `email`, and time is exposed
+      // as `seconds` (not minutes_used/minutes_limit).
       testingBotApiMock.getUserInfo.mockResolvedValue({
         first_name: "Ada",
         last_name: "Lovelace",
-        email: "ada@example.com",
-        minutes_used: 120,
-        minutes_limit: 600,
-        plan: "pro",
+        plan: "Enterprise Plan",
+        company: "Analytical Engines",
+        country: "GB",
+        seconds: 36000,
+        max_concurrent: 5,
+        max_concurrent_mobile: 2,
       });
 
       const tools = addUserTools(serverMock, testingBotApiMock, configMock);
       const result = await tools.getUserInfo.handler({});
 
       expect(testingBotApiMock.getUserInfo).toHaveBeenCalled();
-      expect(result.content[0].text).toContain("Ada Lovelace");
-      expect(result.content[0].text).toContain("ada@example.com");
-      expect(result.content[0].text).toContain("**Minutes Used**: 120");
-      expect(result.content[0].text).toContain("**Plan**: pro");
+      const text = result.content[0].text;
+      expect(text).toContain("Ada Lovelace");
+      expect(text).toContain("**Plan**: Enterprise Plan");
+      expect(text).toContain("**Company**: Analytical Engines");
+      expect(text).toContain("**Seconds Available**: 36000");
+      expect(text).toContain("**Max Concurrency**: 5");
+      expect(text).toContain("**Max Mobile Concurrency**: 2");
+      // Regression guard: never render absent fields as the literal "undefined".
+      expect(text).not.toContain("undefined");
     });
 
-    it("omits optional fields when missing", async () => {
+    it("omits the email line when the API returns no email", async () => {
+      testingBotApiMock.getUserInfo.mockResolvedValue({
+        first_name: "Ada",
+        last_name: "Lovelace",
+      });
+
+      const tools = addUserTools(serverMock, testingBotApiMock, configMock);
+      const result = await tools.getUserInfo.handler({});
+
+      const text = result.content[0].text;
+      expect(text).toContain("Ada Lovelace");
+      expect(text).not.toContain("Email");
+      expect(text).not.toContain("undefined");
+    });
+
+    it("renders email only when present", async () => {
       testingBotApiMock.getUserInfo.mockResolvedValue({
         first_name: "Ada",
         last_name: "Lovelace",
@@ -52,8 +76,7 @@ describe("User Tools", () => {
       const tools = addUserTools(serverMock, testingBotApiMock, configMock);
       const result = await tools.getUserInfo.handler({});
 
-      expect(result.content[0].text).not.toContain("Minutes Used");
-      expect(result.content[0].text).not.toContain("Plan");
+      expect(result.content[0].text).toContain("**Email**: ada@example.com");
     });
 
     it("surfaces API errors", async () => {

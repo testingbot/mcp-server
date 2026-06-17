@@ -16,18 +16,36 @@ export default function addUserTools(server: any, testingBotApi: any, _config: T
 
         const userInfo = await testingBotApi.getUserInfo();
 
-        let formattedOutput = "## User Information\n\n";
-        formattedOutput += `- **Name**: ${userInfo.first_name} ${userInfo.last_name}\n`;
-        formattedOutput += `- **Email**: ${userInfo.email}\n`;
+        // The /v1/user endpoint returns first_name/last_name, plan, company,
+        // country, seconds, and concurrency limits. It does NOT return an email
+        // field. Guard every line so absent fields are omitted rather than
+        // rendered as "undefined".
+        const name = [userInfo.first_name, userInfo.last_name].filter(Boolean).join(" ");
 
-        if (userInfo.minutes_used !== undefined) {
-          formattedOutput += `- **Minutes Used**: ${userInfo.minutes_used}\n`;
+        let formattedOutput = "## User Information\n\n";
+        if (name) {
+          formattedOutput += `- **Name**: ${name}\n`;
         }
-        if (userInfo.minutes_limit !== undefined) {
-          formattedOutput += `- **Minutes Limit**: ${userInfo.minutes_limit}\n`;
+        if (userInfo.email) {
+          formattedOutput += `- **Email**: ${userInfo.email}\n`;
+        }
+        if (userInfo.company) {
+          formattedOutput += `- **Company**: ${userInfo.company}\n`;
+        }
+        if (userInfo.country) {
+          formattedOutput += `- **Country**: ${userInfo.country}\n`;
         }
         if (userInfo.plan !== undefined) {
           formattedOutput += `- **Plan**: ${userInfo.plan}\n`;
+        }
+        if (userInfo.seconds !== undefined) {
+          formattedOutput += `- **Seconds Available**: ${userInfo.seconds}\n`;
+        }
+        if (userInfo.max_concurrent !== undefined) {
+          formattedOutput += `- **Max Concurrency**: ${userInfo.max_concurrent}\n`;
+        }
+        if (userInfo.max_concurrent_mobile !== undefined) {
+          formattedOutput += `- **Max Mobile Concurrency**: ${userInfo.max_concurrent_mobile}\n`;
         }
 
         return {
