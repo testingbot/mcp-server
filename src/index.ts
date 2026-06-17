@@ -1,13 +1,9 @@
 #!/usr/bin/env node
 
-// webdriver (via @wdio/logger, pulled in transitively by @testingbot/automation-mcp)
-// defaults to level "info" and writes those logs to process.stdout. For a stdio MCP
-// server, stdout is reserved exclusively for JSON-RPC framing, so any stray webdriver
-// log line corrupts the protocol stream (the client throws "Unexpected non-whitespace
-// character after JSON"). Silence it before any import can create a wdio logger —
-// @wdio/logger reads WDIO_LOG_LEVEL lazily at getLogger() time, but setting it here,
-// above the imports, guarantees it's in place. An operator can still override it.
-process.env.WDIO_LOG_LEVEL = process.env.WDIO_LOG_LEVEL || "silent";
+// MUST be first: sets WDIO_LOG_LEVEL before any module pulls in `webdriver`, which
+// would otherwise log to stdout and corrupt the stdio JSON-RPC stream. See the
+// module for why a plain top-level assignment here is too late (ESM hoisting).
+import "./silence-wdio.js";
 
 import { getConfig } from "./config.js";
 import { TestingBotMcpServer } from "./server-factory.js";

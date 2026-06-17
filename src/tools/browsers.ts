@@ -68,7 +68,8 @@ export default function addBrowserTools(
           devices.forEach((device: any) => {
             formattedOutput += `### ${device.name}\n`;
             formattedOutput += `- **ID**: ${device.id}\n`;
-            formattedOutput += `- **Platform**: ${device.platform}\n`;
+            // The /v1/devices endpoint returns `platform_name` (not `platform`).
+            formattedOutput += `- **Platform**: ${device.platform_name || device.platform}\n`;
             formattedOutput += `- **Version**: ${device.version}\n`;
             formattedOutput += `- **Available**: ${device.available ? "Yes" : "No"}\n`;
             formattedOutput += "\n";
