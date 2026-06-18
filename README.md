@@ -57,17 +57,30 @@ credentials blank, and just ask the agent:
 
 > Log me in to TestingBot.
 
-The agent calls the **`tb_login`** tool, which prints a short URL and code:
+The agent calls the **`tb_login`** tool. It uses OAuth-style browser
+authentication — no secret ever leaves the browser — and picks the right
+mechanism for your environment automatically:
 
-1. Open the URL in your browser (e.g. `https://testingbot.com/device`).
-2. Enter the code, sign in if needed, and click **Authorize**.
-3. Tell the agent you've authorized — it calls `tb_login` again to finish.
+- **Browser (loopback, the default on a desktop):** your browser opens to a
+  TestingBot authorization page. Sign in if needed and click **Authorize**; the
+  credentials are captured on a local callback and the agent finishes the
+  sign-in. Nothing to type. (RFC 8252.)
+- **Device code (automatic fallback on SSH / remote / dev containers / web):**
+  the tool prints a short URL and code instead:
+  1. Open the URL in your browser (e.g. `https://testingbot.com/device`).
+  2. Enter the code, sign in if needed, and click **Authorize**.
+  3. Tell the agent you've authorized — it calls `tb_login` again to finish.
+
+  (RFC 8628.)
+
+You can force a mechanism by passing `mode: "loopback"` or `mode: "device"` to
+`tb_login` (the default is `"auto"`).
 
 Your credentials are written to `~/.testingbot/credentials` (mode `0600`) and
-used by every subsequent tool call — no restart, no JSON editing, and no secret
-ever leaves the browser. This works in any MCP client (VS Code, Cursor, Cline,
-Claude Desktop, …). To use a different account, set `TESTINGBOT_PROFILE`; to
-relocate the file, set `TESTINGBOT_CONFIG_DIR`.
+used by every subsequent tool call — no restart and no JSON editing. This works
+in any MCP client (VS Code, Cursor, Cline, Claude Desktop, …). To use a different
+account, set `TESTINGBOT_PROFILE`; to relocate the file, set
+`TESTINGBOT_CONFIG_DIR`.
 
 #### Environment Variables
 
@@ -85,6 +98,21 @@ Or create a `.env` file in your project:
 TESTINGBOT_KEY=your-api-key
 TESTINGBOT_SECRET=your-api-secret
 ```
+
+The key also accepts the aliases `TB_KEY` / `TESTINGBOT_USERNAME`, and the secret
+accepts `TB_SECRET` / `TESTINGBOT_ACCESS_KEY`.
+
+#### How credentials are resolved
+
+Credentials are resolved in this order, highest priority first:
+
+1. **Environment variables** (above) — both a key and a secret must be set. This
+   lets CI and per-client config override everything else.
+2. **The `~/.testingbot/credentials` file** written by `tb_login`, for the active
+   profile (`default`, or `TESTINGBOT_PROFILE`).
+3. **Neither set:** the server starts in a degraded mode where every tool except
+   `tb_login` reports "Run tb_login to authenticate" — so first run is
+   self-healing rather than a hard error.
 
 #### Claude Desktop
 
