@@ -1,28 +1,62 @@
 name: Publish to npm
 
 on:
+  # Publish when a GitHub Release is published (tag it vX.Y.Z first).
   release:
     types: [published]
+  # Or trigger manually from the Actions tab.
+  workflow_dispatch:
 
 permissions:
-  id-token: write  # Required for OIDC
   contents: read
+  # Required for npm Trusted Publishing (OIDC) — mints the short-lived token used
+  # to authenticate to the registry. No NPM_TOKEN secret needed.
+  id-token: write
 
 jobs:
-  build:
+  publish:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       id-token: write
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
-          node-version: '20.x'
-          registry-url: 'https://registry.npmjs.org'
-      - name: Update npm
+          node-version: 22
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      # Trusted Publishing requires npm CLI >= 11.5.1; the version bundled with
+      # Node can be older, so upgrade explicitly.
+      - name: Ensure npm supports trusted publishing
         run: npm install -g npm@latest
-      - run: npm ci
-      - run: npm run build
-      - run: npm test
-      - run: npm publish --provenance --access public
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Guard: package.json version must match the release tag (vX.Y.Z).
+      # Skipped on manual workflow_dispatch runs (no tag).
+      - name: Verify version matches tag
+        if: github.event_name == 'release'
+        run: |
+          PKG_VERSION="$(node -p "require('./package.json').version")"
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          if [ "$PKG_VERSION" != "$TAG_VERSION" ]; then
+            echo "::error::package.json version ($PKG_VERSION) does not match release tag ($TAG_VERSION)"
+            exit 1
+          fi
+          echo "Version $PKG_VERSION matches tag."
+
+      # Build + lint + tests (the build script runs them) so a broken build or
+      # failing test blocks the publish, and dist/ is freshly compiled regardless
+      # of whether the package defines a prepublishOnly hook.
+      - name: Build
+        run: npm run build
+
+      # No NODE_AUTH_TOKEN: OIDC handles auth. --provenance is set defensively
+      # (trusted publishing usually emits it automatically).
+      - name: Publish to npm
+        run: npm publish --provenance --access public
