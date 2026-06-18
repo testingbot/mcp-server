@@ -63,7 +63,10 @@ cp .mcpbignore       "$STAGE/.mcpbignore"
 if [[ -f icon.png ]]; then
   cp icon.png "$STAGE/"
 else
-  warn "no icon.png at repo root — manifest references one; the bundle will show a default icon"
+  # manifest.json references icon.png; mcpb validate/pack hard-fails if it's
+  # missing, so fail here too rather than warn — keeps local builds honest
+  # with CI instead of letting a broken bundle slip through.
+  fail "no icon.png at repo root — manifest.json references one; mcpb pack will reject the bundle"
 fi
 ok "staged to $STAGE"
 
