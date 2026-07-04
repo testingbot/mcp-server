@@ -9,10 +9,13 @@ import { fileURLToPath } from "url";
 
 const VIEWS = ["test-details", "screenshot-gallery"];
 const PLACEHOLDER = "/*__VIEW_BUNDLE__*/";
+const LOGO_PLACEHOLDER = "<!--__TB_LOGO__-->";
 
 const repoRoot = new URL("../", import.meta.url);
 const outDir = new URL("dist/ui/views/", repoRoot);
 await mkdir(fileURLToPath(outDir), { recursive: true });
+
+const logoSvg = await readFile(fileURLToPath(new URL("src/ui/views/tb-logo.svg", repoRoot)), "utf8");
 
 for (const view of VIEWS) {
   const result = await build({
@@ -30,9 +33,16 @@ for (const view of VIEWS) {
   if (!html.includes(PLACEHOLDER)) {
     throw new Error(`src/ui/views/${view}.html is missing the ${PLACEHOLDER} placeholder`);
   }
+  if (!html.includes(LOGO_PLACEHOLDER)) {
+    throw new Error(`src/ui/views/${view}.html is missing the ${LOGO_PLACEHOLDER} placeholder`);
+  }
   // split/join instead of String.replace: minified JS contains `$` sequences
   // that String.replace would interpret as replacement patterns.
-  const out = html.split(PLACEHOLDER).join(result.outputFiles[0].text);
+  const out = html
+    .split(PLACEHOLDER)
+    .join(result.outputFiles[0].text)
+    .split(LOGO_PLACEHOLDER)
+    .join(logoSvg.trim());
   const outPath = fileURLToPath(new URL(`${view}.html`, outDir));
   await writeFile(outPath, out);
   console.log(`built dist/ui/views/${view}.html (${(out.length / 1024).toFixed(0)} KiB)`);

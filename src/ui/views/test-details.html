@@ -6,6 +6,10 @@
     <style>
       :root {
         color-scheme: light dark;
+        /* TestingBot brand: primary-600 from testingbot.com */
+        --tb-blue: #2563eb;
+        --tb-blue-strong: #1d4ed8;
+        --tb-accent: light-dark(#2563eb, #60a5fa);
       }
       * {
         box-sizing: border-box;
@@ -17,6 +21,43 @@
         font-size: var(--font-text-md-size, 14px);
         background: var(--color-background-primary, transparent);
         color: var(--color-text-primary, CanvasText);
+      }
+      .tb-brand {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding-bottom: 9px;
+        margin-bottom: 12px;
+        border-bottom: 1px solid var(--color-border-primary, rgba(128, 128, 128, 0.35));
+      }
+      .tb-brand svg {
+        height: 22px;
+        width: auto;
+        flex: 0 0 auto;
+      }
+      /* Keep the logo's dark outline visible on dark hosts. */
+      :root[data-theme="dark"] .tb-brand svg {
+        filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.45));
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) .tb-brand svg {
+          filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.45));
+        }
+      }
+      .tb-wordmark {
+        font-size: var(--font-text-sm-size, 13px);
+        font-weight: var(--font-weight-semibold, 600);
+        letter-spacing: 0.01em;
+      }
+      .tb-wordmark b {
+        color: var(--tb-accent);
+        font-weight: var(--font-weight-bold, 700);
+      }
+      button:focus-visible,
+      img:focus-visible,
+      summary:focus-visible {
+        outline: 2px solid var(--tb-accent);
+        outline-offset: 1px;
       }
       .loading,
       .error {
@@ -105,6 +146,9 @@
         cursor: pointer;
         flex: 0 0 auto;
       }
+      .thumbs img:hover {
+        border-color: var(--tb-accent);
+      }
       .buttons {
         display: flex;
         flex-wrap: wrap;
@@ -123,6 +167,17 @@
       }
       button.link:hover {
         background: var(--color-background-tertiary, rgba(128, 128, 128, 0.12));
+        border-color: var(--tb-accent);
+      }
+      button.link.primary {
+        background: var(--tb-blue);
+        border-color: var(--tb-blue);
+        color: #fff;
+        font-weight: var(--font-weight-medium, 500);
+      }
+      button.link.primary:hover {
+        background: var(--tb-blue-strong);
+        border-color: var(--tb-blue-strong);
       }
       details {
         margin-top: 10px;
@@ -131,6 +186,7 @@
         cursor: pointer;
         font-size: var(--font-text-sm-size, 13px);
         font-weight: var(--font-weight-medium, 500);
+        color: var(--tb-accent);
       }
       .step {
         padding: 6px 8px;
@@ -164,6 +220,7 @@
     </style>
   </head>
   <body>
+    <header class="tb-brand"><!--__TB_LOGO__--><span class="tb-wordmark">Testing<b>Bot</b></span></header>
     <div id="root"><p class="loading">Waiting for test data…</p></div>
     <script type="module">/*__VIEW_BUNDLE__*/</script>
   </body>

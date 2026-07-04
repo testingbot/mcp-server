@@ -134,7 +134,7 @@ function render(test) {
     buttons.appendChild(button);
   });
   if (test.testUrl) {
-    const button = el("button", "link", "Open in TestingBot ↗");
+    const button = el("button", "link primary", "Open in TestingBot ↗");
     button.addEventListener("click", () => openExternal(test.testUrl));
     buttons.appendChild(button);
   }
