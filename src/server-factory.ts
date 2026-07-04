@@ -1,7 +1,14 @@
 import { Server as McpServer } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
+import {
+  CallToolRequestSchema,
+  ListResourcesRequestSchema,
+  ListResourceTemplatesRequestSchema,
+  ListToolsRequestSchema,
+  ReadResourceRequestSchema,
+} from "@modelcontextprotocol/sdk/types.js";
 import { TestingBotConfig } from "./lib/types.js";
+import { listUiResources, readUiResource } from "./ui/app-resources.js";
 import logger from "./lib/logger.js";
 import { createRequire } from "module";
 
@@ -45,6 +52,8 @@ export class TestingBotMcpServer {
           // listChanged lets us notify clients when tb_login re-registers
           // credential-dependent (automation) tools after a successful login.
           tools: { listChanged: true },
+          // MCP Apps (SEP-1865) view templates — a static set, so no listChanged.
+          resources: {},
         },
       }
     );
@@ -56,20 +65,21 @@ export class TestingBotMcpServer {
   private setupHandlers() {
     // Handle tools/list request
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
-      return {
-        tools: Object.values(this.tools).map((tool: any) => ({
-          name: tool.name,
-          description: tool.description,
-          // Proxied tools (e.g. appium-mcp) pre-stash a raw JSON Schema on the
-          // tool object. Honor it; otherwise serialize the Zod-style dict.
-          inputSchema: tool.inputSchema ?? {
-            type: "object",
-            properties: tool.schema,
-            required: Object.keys(tool.schema).filter((key) => !tool.schema[key].isOptional?.()),
-          },
-        })),
-      };
+      return { tools: this.describeTools() };
     });
+
+    // MCP Apps (SEP-1865) view templates, served as ui:// resources. Thin
+    // wrappers: the listing/reading logic lives in ui/app-resources.ts where
+    // it is unit-testable without a connected server.
+    this.server.setRequestHandler(ListResourcesRequestSchema, async () => listUiResources());
+    this.server.setRequestHandler(ReadResourceRequestSchema, async (request) =>
+      readUiResource(request.params.uri)
+    );
+    // Some clients probe resource templates unconditionally; an empty answer
+    // beats "Method not found" noise in their logs.
+    this.server.setRequestHandler(ListResourceTemplatesRequestSchema, async () => ({
+      resourceTemplates: [],
+    }));
 
     // Handle tools/call request
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
@@ -80,6 +90,23 @@ export class TestingBotMcpServer {
 
       return this.handleToolCall(toolName, toolArgs);
     });
+  }
+
+  // Serializes the tool registry into tools/list entries. Public so the _meta
+  // passthrough (MCP Apps view links) is unit-testable without a transport.
+  public describeTools() {
+    return Object.values(this.tools).map((tool: any) => ({
+      name: tool.name,
+      description: tool.description,
+      // Proxied tools (e.g. appium-mcp) pre-stash a raw JSON Schema on the
+      // tool object. Honor it; otherwise serialize the Zod-style dict.
+      inputSchema: tool.inputSchema ?? {
+        type: "object",
+        properties: tool.schema,
+        required: Object.keys(tool.schema).filter((key) => !tool.schema[key].isOptional?.()),
+      },
+      ...(tool._meta ? { _meta: tool._meta } : {}),
+    }));
   }
 
   // Dispatch a single tool call, applying the degraded-mode credential gate.
@@ -193,13 +220,15 @@ export class TestingBotMcpServer {
     name: string,
     description: string,
     schema: any,
-    handler: (args: any) => Promise<any>
+    handler: (args: any) => Promise<any>,
+    extra?: { _meta?: Record<string, unknown> }
   ) {
     const tool = {
       name,
       description,
       schema,
       handler,
+      ...(extra?._meta ? { _meta: extra._meta } : {}),
     };
 
     return tool;

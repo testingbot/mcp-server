@@ -10,7 +10,13 @@ describe("Screenshot Tools", () => {
     vi.clearAllMocks();
 
     serverMock = {
-      tool: vi.fn((name, desc, schema, handler) => ({ name, desc, schema, handler })),
+      tool: vi.fn((name, desc, schema, handler, extra) => ({
+        name,
+        desc,
+        schema,
+        handler,
+        ...(extra?._meta ? { _meta: extra._meta } : {}),
+      })),
     };
 
     testingBotApiMock = {
@@ -88,6 +94,32 @@ describe("Screenshot Tools", () => {
       expect(testingBotApiMock.retrieveScreenshots).toHaveBeenCalledWith("shot-1");
       expect(result.content[0].text).toContain("chrome 120 on WIN11");
       expect(result.content[0].text).toContain("https://img/1.png");
+      expect(result.structuredContent).toEqual({
+        screenshotId: "shot-1",
+        url: "https://example.com",
+        state: "done",
+        screenshots: [
+          {
+            browser: "chrome",
+            version: "120",
+            os: "WIN11",
+            resolution: null,
+            imageUrl: "https://img/1.png",
+            thumbUrl: "https://thumb/1.png",
+          },
+        ],
+      });
+    });
+
+    it("links the MCP Apps gallery view via _meta", () => {
+      const tools = addScreenshotTools(serverMock, testingBotApiMock, configMock);
+
+      expect(tools.retrieveScreenshots._meta).toEqual({
+        ui: { resourceUri: "ui://testingbot/screenshot-gallery.html" },
+      });
+      // Only retrieveScreenshots has a view; the others must stay meta-free.
+      expect(tools.takeScreenshot._meta).toBeUndefined();
+      expect(tools.getScreenshotList._meta).toBeUndefined();
     });
 
     it("shows processing message when no screenshots yet", async () => {
@@ -100,6 +132,9 @@ describe("Screenshot Tools", () => {
       const result = await tools.retrieveScreenshots.handler({ screenshotId: "shot-2" });
 
       expect(result.content[0].text).toContain("still processing");
+      // The view relies on state + empty array to render a progress hint.
+      expect(result.structuredContent.state).toBe("processing");
+      expect(result.structuredContent.screenshots).toEqual([]);
     });
 
     it("surfaces API errors", async () => {
@@ -109,6 +144,7 @@ describe("Screenshot Tools", () => {
       const result = await tools.retrieveScreenshots.handler({ screenshotId: "missing" });
 
       expect(result.isError).toBe(true);
+      expect(result.structuredContent).toBeUndefined();
     });
   });
 

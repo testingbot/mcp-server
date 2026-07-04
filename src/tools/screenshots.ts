@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { TestingBotConfig } from "../lib/types.js";
 import { handleMCPError, validateUrl } from "../lib/utils.js";
+import { SCREENSHOT_GALLERY_RESOURCE_URI } from "../ui/app-resources.js";
 import logger from "../lib/logger.js";
 
 export default function addScreenshotTools(
@@ -104,6 +105,25 @@ export default function addScreenshotTools(
           formattedOutput += "Screenshots are still processing. Please try again in a moment.\n";
         }
 
+        // Mirror for the MCP Apps gallery view. The "still processing" case
+        // keeps an empty array + state so the view can render a progress hint
+        // instead of a blank frame.
+        const structuredContent = {
+          screenshotId: args.screenshotId,
+          url: result.url ?? null,
+          state: result.state || "processing",
+          screenshots: Array.isArray(result.screenshots)
+            ? result.screenshots.map((screenshot: any) => ({
+                browser: screenshot.browser ?? null,
+                version: screenshot.version ?? null,
+                os: screenshot.os ?? null,
+                resolution: screenshot.resolution ?? null,
+                imageUrl: screenshot.image_url ?? null,
+                thumbUrl: screenshot.thumb_url ?? null,
+              }))
+            : [],
+        };
+
         return {
           content: [
             {
@@ -111,11 +131,13 @@ export default function addScreenshotTools(
               text: formattedOutput,
             },
           ],
+          structuredContent,
         };
       } catch (error) {
         return handleMCPError("retrieveScreenshots", error);
       }
-    }
+    },
+    { _meta: { ui: { resourceUri: SCREENSHOT_GALLERY_RESOURCE_URI } } }
   );
 
   tools.getScreenshotList = server.tool(

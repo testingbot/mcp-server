@@ -1,0 +1,128 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      :root {
+        color-scheme: light dark;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 14px;
+        font-family: var(--font-sans, system-ui, -apple-system, sans-serif);
+        font-size: var(--font-text-md-size, 14px);
+        background: var(--color-background-primary, transparent);
+        color: var(--color-text-primary, CanvasText);
+      }
+      .loading,
+      .error,
+      .processing {
+        padding: 10px 12px;
+        border-radius: var(--border-radius-md, 8px);
+      }
+      .error {
+        background: var(--color-background-danger, rgba(220, 53, 69, 0.12));
+        color: var(--color-text-danger, #c0392b);
+        white-space: pre-wrap;
+      }
+      .processing {
+        background: var(--color-background-info, rgba(13, 110, 253, 0.1));
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .spinner {
+        width: 16px;
+        height: 16px;
+        flex: 0 0 auto;
+        border: 2px solid var(--color-border-primary, rgba(128, 128, 128, 0.35));
+        border-top-color: var(--color-text-primary, currentColor);
+        border-radius: 50%;
+        animation: spin 0.9s linear infinite;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .header {
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 12px;
+      }
+      .header h1 {
+        font-size: var(--font-heading-sm-size, 16px);
+        font-weight: var(--font-weight-semibold, 600);
+        margin: 0;
+        overflow-wrap: anywhere;
+      }
+      .header .count {
+        color: var(--color-text-secondary, inherit);
+        font-size: var(--font-text-sm-size, 13px);
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+        gap: 12px;
+      }
+      .card {
+        border: 1px solid var(--color-border-primary, rgba(128, 128, 128, 0.35));
+        border-radius: var(--border-radius-md, 8px);
+        overflow: hidden;
+        background: var(--color-background-secondary, transparent);
+      }
+      .card img {
+        display: block;
+        width: 100%;
+        aspect-ratio: 4 / 3;
+        object-fit: cover;
+        object-position: top;
+        cursor: zoom-in;
+        background: var(--color-background-tertiary, rgba(128, 128, 128, 0.12));
+      }
+      .card .label {
+        padding: 7px 9px;
+        font-size: var(--font-text-xs-size, 12px);
+        color: var(--color-text-secondary, inherit);
+        overflow-wrap: anywhere;
+      }
+      .lightbox {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.78);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        cursor: zoom-out;
+        z-index: 10;
+      }
+      .lightbox img {
+        max-width: 94%;
+        max-height: 86%;
+        border-radius: var(--border-radius-md, 8px);
+      }
+      .lightbox button {
+        padding: 6px 14px;
+        border: none;
+        border-radius: var(--border-radius-md, 8px);
+        background: rgba(255, 255, 255, 0.92);
+        color: #111;
+        font: inherit;
+        font-size: var(--font-text-sm-size, 13px);
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"><p class="loading">Waiting for screenshots…</p></div>
+    <script type="module">/*__VIEW_BUNDLE__*/</script>
+  </body>
+</html>

@@ -498,6 +498,23 @@ Delete an active TestingBot tunnel by ID. This terminates the tunnel connection.
 **Example prompt:**
 > "Delete tunnel 12345"
 
+## Interactive UI (MCP Apps)
+
+The server implements the [MCP Apps extension (SEP-1865)](https://modelcontextprotocol.io/community/seps/1865-mcp-apps-interactive-user-interfaces-for-mcp), so hosts that support it render interactive views inline in the conversation:
+
+- **`getTestDetails`** — a test dashboard with status, metadata, an embedded video player, click-to-enlarge screenshot thumbnails, and one-click access to Selenium/browser/VM logs.
+- **`retrieveScreenshots`** — a cross-browser screenshot gallery labelled by browser/OS/resolution, with click-to-enlarge previews.
+
+How it works:
+
+- Views are served as MCP resources under the `ui://testingbot/` URI scheme with mime type `text/html;profile=mcp-app`, and each tool links to its view via `_meta.ui.resourceUri`.
+- Hosts render the view in a sandboxed iframe and pass the tool's `structuredContent` to it. The views load screenshots and video directly from TestingBot, declared via the resource's CSP metadata (`_meta.ui.csp`).
+- **Hosts without MCP Apps support are unaffected** — these tools still return the same full Markdown text output as before.
+
+Supported hosts include Claude (Desktop and claude.ai) and other clients implementing the extension. Each view is a self-contained HTML file (~300 KiB, built by `npm run build:ui` into `dist/ui/views/`).
+
+> **Note on marketplaces:** listing this server on the ChatGPT Apps store or the [Claude connectors directory](https://claude.com/docs/connectors/building/submission) additionally requires a *remote* MCP server (HTTPS Streamable HTTP transport, typically with OAuth). This server currently ships as a local stdio server; the UI views above carry over unchanged once a remote transport is added.
+
 ## Usage Examples
 
 ### Example 1: Running Cross-Browser Tests
@@ -703,17 +720,22 @@ testingbot-mcp-server/
 │   │   ├── logger.ts         # Logging setup
 │   │   ├── utils.ts          # Utility functions
 │   │   └── get-auth.ts       # Authentication helpers
-│   └── tools/
-│       ├── browsers.ts       # Browser & device tools
-│       ├── tests.ts          # Test management tools
-│       ├── builds.ts         # Build management tools
-│       ├── storage.ts        # Storage tools
-│       ├── screenshots.ts    # Screenshot tools
-│       ├── user.ts           # User management tools
-│       ├── team.ts           # Team management tools
-│       ├── cdp.ts            # Chrome DevTools Protocol tools
-│       ├── tunnels.ts        # Tunnel management tools
-│       └── live.ts           # Live testing session tools
+│   ├── tools/
+│   │   ├── browsers.ts       # Browser & device tools
+│   │   ├── tests.ts          # Test management tools
+│   │   ├── builds.ts         # Build management tools
+│   │   ├── storage.ts        # Storage tools
+│   │   ├── screenshots.ts    # Screenshot tools
+│   │   ├── user.ts           # User management tools
+│   │   ├── team.ts           # Team management tools
+│   │   ├── cdp.ts            # Chrome DevTools Protocol tools
+│   │   ├── tunnels.ts        # Tunnel management tools
+│   │   └── live.ts           # Live testing session tools
+│   └── ui/
+│       ├── app-resources.ts  # MCP Apps ui:// resource registry
+│       └── views/            # Interactive view templates (HTML + JS)
+├── scripts/
+│   └── build-ui.mjs          # Bundles views into dist/ui/views/
 ├── tests/
 │   └── tools/                # Unit tests
 ├── dist/                     # Compiled output

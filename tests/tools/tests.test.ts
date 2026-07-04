@@ -10,8 +10,8 @@ describe("Test Tools", () => {
     vi.clearAllMocks();
 
     serverMock = {
-      tool: vi.fn((name, desc, schema, handler) => {
-        return { name, desc, schema, handler };
+      tool: vi.fn((name, desc, schema, handler, extra) => {
+        return { name, desc, schema, handler, ...(extra?._meta ? { _meta: extra._meta } : {}) };
       }),
     };
 
@@ -121,6 +121,67 @@ describe("Test Tools", () => {
       await tools.getTestDetails.handler({ sessionId: "test-123@#$" });
 
       expect(testingBotApiMock.getTestDetails).toHaveBeenCalledWith("test-123");
+    });
+
+    it("links the MCP Apps test-details view via _meta", () => {
+      const tools = addTestTools(serverMock, testingBotApiMock, configMock);
+
+      expect(tools.getTestDetails._meta).toEqual({
+        ui: { resourceUri: "ui://testingbot/test-details.html" },
+      });
+      // Only getTestDetails has a view; the other test tools stay meta-free.
+      expect(tools.getTests._meta).toBeUndefined();
+      expect(tools.updateTest._meta).toBeUndefined();
+    });
+
+    it("returns structuredContent mirroring the markdown", async () => {
+      testingBotApiMock.getTestDetails.mockResolvedValue({
+        session_id: "test-123",
+        status_id: 0, // Failed
+        status_message: "element not found",
+        browser: "chrome",
+        version: "120",
+        os: "WIN11",
+        duration: 45,
+        created_at: "2025-01-01T00:00:00Z",
+        name: "Login Test",
+        video: "https://example.com/video.mp4",
+        thumbs: ["https://example.com/thumb1.png", "https://example.com/thumb2.png"],
+        logs: { selenium: "https://example.com/selenium.log" },
+        steps: [{ command: "click", arguments: "#login", response: "ok", time: 1735689600000 }],
+      });
+
+      const tools = addTestTools(serverMock, testingBotApiMock, configMock);
+      const result = await tools.getTestDetails.handler({ sessionId: "test-123" });
+
+      expect(result.structuredContent).toMatchObject({
+        sessionId: "test-123",
+        name: "Login Test",
+        status: "Failed",
+        statusMessage: "element not found",
+        browser: "chrome 120",
+        platform: "WIN11",
+        duration: 45,
+        video: "https://example.com/video.mp4",
+        thumbs: ["https://example.com/thumb1.png", "https://example.com/thumb2.png"],
+        logs: { selenium: "https://example.com/selenium.log", browser: null, chrome: null, vm: null },
+        testUrl: "https://testingbot.com/members/tests/test-123",
+      });
+      expect(result.structuredContent.steps).toEqual([
+        { command: "click", arguments: "#login", response: "ok", time: 1735689600000 },
+      ]);
+      // The markdown text stays intact for non-UI hosts.
+      expect(result.content[0].text).toContain("Login Test");
+    });
+
+    it("omits structuredContent on API errors", async () => {
+      testingBotApiMock.getTestDetails.mockRejectedValue(new Error("not found"));
+
+      const tools = addTestTools(serverMock, testingBotApiMock, configMock);
+      const result = await tools.getTestDetails.handler({ sessionId: "missing" });
+
+      expect(result.isError).toBe(true);
+      expect(result.structuredContent).toBeUndefined();
     });
   });
 

@@ -17,6 +17,8 @@ export default tseslint.config(
     },
   },
   {
-    ignores: ["dist/", "node_modules/", "coverage/"],
+    // src/ui/views/ holds browser-side view code (plain JS bundled by
+    // scripts/build-ui.mjs), not Node/TypeScript sources.
+    ignores: ["dist/", "node_modules/", "coverage/", "src/ui/views/"],
   }
 );

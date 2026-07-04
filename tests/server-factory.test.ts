@@ -140,3 +140,56 @@ describe("TestingBotMcpServer.handleToolCall (degraded-mode credential gate)", (
     await expect(server.handleToolCall("nope", {})).rejects.toThrow(/Tool not found/);
   });
 });
+
+describe("TestingBotMcpServer.describeTools (MCP Apps _meta passthrough)", () => {
+  let testingBotApiMock: any;
+
+  beforeEach(() => {
+    testingBotApiMock = {
+      getUserInfo: vi.fn().mockResolvedValue({ email: "ada@example.com" }),
+    };
+  });
+
+  function makeServer() {
+    return new TestingBotMcpServer(testingBotApiMock, {
+      "testingbot-key": "k",
+      "testingbot-secret": "s",
+    });
+  }
+
+  it("forwards _meta.ui.resourceUri for view-backed tools", () => {
+    const server = makeServer();
+    const described = server.describeTools();
+
+    const testDetails = described.find((t: any) => t.name === "getTestDetails");
+    expect(testDetails?._meta).toEqual({
+      ui: { resourceUri: "ui://testingbot/test-details.html" },
+    });
+
+    const gallery = described.find((t: any) => t.name === "retrieveScreenshots");
+    expect(gallery?._meta).toEqual({
+      ui: { resourceUri: "ui://testingbot/screenshot-gallery.html" },
+    });
+  });
+
+  it("omits _meta for tools without a view, including proxied-style tools", () => {
+    const server = makeServer();
+    // Shape of a tool proxied from @testingbot/automation-mcp: raw JSON
+    // Schema pre-stashed, no _meta. The describe path must not invent one.
+    server.tools.appium_stub = {
+      name: "appium_stub",
+      description: "proxied tool",
+      inputSchema: { type: "object", properties: {} },
+    };
+
+    const described = server.describeTools();
+
+    const proxied = described.find((t: any) => t.name === "appium_stub");
+    expect(proxied).toBeDefined();
+    expect(proxied).not.toHaveProperty("_meta");
+    expect(proxied?.inputSchema).toEqual({ type: "object", properties: {} });
+
+    const plain = described.find((t: any) => t.name === "getTests");
+    expect(plain).not.toHaveProperty("_meta");
+  });
+});

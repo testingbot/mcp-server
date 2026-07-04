@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { TestingBotConfig } from "../lib/types.js";
 import { handleMCPError, sanitizeSessionId } from "../lib/utils.js";
+import { TEST_DETAILS_RESOURCE_URI } from "../ui/app-resources.js";
 import logger from "../lib/logger.js";
 
 export default function addTestTools(server: any, testingBotApi: any, _config: TestingBotConfig) {
@@ -267,6 +268,50 @@ export default function addTestTools(server: any, testingBotApi: any, _config: T
           formattedOutput += `- **Assets**: Available\n`;
         }
 
+        // Mirror of the markdown above for the MCP Apps view (and any host
+        // that prefers structured output). The text stays the source of truth
+        // for non-UI hosts and the model itself.
+        const structuredContent = {
+          sessionId,
+          name: test.name ?? null,
+          status:
+            test.status_id !== undefined
+              ? testStatus(test.status_id)
+              : test.success !== undefined
+                ? test.success
+                  ? "Passed"
+                  : "Failed"
+                : null,
+          state: test.state ?? null,
+          statusMessage: test.status_message ?? null,
+          browser: formatBrowser(test) || null,
+          platform: test.os || test.platform || test.platform_name || null,
+          deviceName: test.device_name ?? null,
+          type: test.type ?? null,
+          duration: test.duration ?? null,
+          createdAt: test.created_at ?? null,
+          completedAt: test.completed_at ?? null,
+          video: test.video ?? null,
+          thumbs: Array.isArray(test.thumbs) ? test.thumbs : [],
+          logs: {
+            selenium: test.logs?.selenium ?? null,
+            browser: test.logs?.browser ?? null,
+            chrome: test.logs?.chrome ?? null,
+            vm: test.logs?.vm ?? null,
+          },
+          build: test.build ?? null,
+          extra: test.extra ?? null,
+          steps: Array.isArray(test.steps)
+            ? test.steps.slice(0, 100).map((step: any) => ({
+                command: step.command,
+                arguments: step.arguments ?? null,
+                response: step.response?.substring(0, 200) ?? null,
+                time: step.time ?? null,
+              }))
+            : [],
+          testUrl: testUrl(test),
+        };
+
         return {
           content: [
             {
@@ -274,11 +319,13 @@ export default function addTestTools(server: any, testingBotApi: any, _config: T
               text: formattedOutput,
             },
           ],
+          structuredContent,
         };
       } catch (error) {
         return handleMCPError("getTestDetails", error);
       }
-    }
+    },
+    { _meta: { ui: { resourceUri: TEST_DETAILS_RESOURCE_URI } } }
   );
 
   tools.updateTest = server.tool(
