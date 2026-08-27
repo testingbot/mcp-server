@@ -401,6 +401,120 @@ export default function addMaestroTools(
     }
   );
 
+  tools.listMaestroProjects = server.tool(
+    "listMaestroProjects",
+    "List Maestro projects on the account (newest first): app details, flow names, and run IDs. Use this to find an existing projectId instead of re-uploading an app.",
+    {
+      offset: z
+        .union([z.number(), z.string().transform(Number)])
+        .pipe(z.number().min(0))
+        .optional()
+        .default(0)
+        .describe("Offset for pagination (default: 0)"),
+      count: z
+        .union([z.number(), z.string().transform(Number)])
+        .pipe(z.number().min(1).max(100))
+        .optional()
+        .default(10)
+        .describe("Number of projects to retrieve (default: 10, max: 100)"),
+    },
+    async (args: { offset?: number; count?: number }) => {
+      try {
+        const offset = Number(args.offset ?? 0);
+        const count = Number(args.count ?? 10);
+        const result = await client().listProjects(offset, count);
+        const projects = result.data || [];
+
+        let out = `## Maestro Projects (${projects.length} of ${result.meta?.total ?? "?"}, offset ${offset})\n\n`;
+        if (projects.length === 0) {
+          out += "No Maestro projects found.\n";
+        }
+        for (const project of projects) {
+          out += `### Project ${project.id}${project.name ? ` — ${project.name}` : ""} (${project.completed ? "completed" : "in progress"})\n`;
+          if (project.app?.bundle_id) {
+            out += `- **App**: ${project.app.bundle_id}${project.app.app_version ? ` v${project.app.app_version}` : ""}\n`;
+          }
+          if (project.flows?.length) {
+            out += `- **Flows**: ${project.flows.map((f) => f.name || `#${f.id}`).join(", ")}\n`;
+          }
+          if (project.runs?.length) {
+            out += `- **Run IDs**: ${project.runs.join(", ")}\n`;
+          }
+          if (project.created_at) {
+            out += `- **Created**: ${project.created_at}\n`;
+          }
+          out += "\n";
+        }
+        return { content: [{ type: "text", text: out }] };
+      } catch (error) {
+        return handleMCPError("listMaestroProjects", error);
+      }
+    }
+  );
+
+  tools.listMaestroRuns = server.tool(
+    "listMaestroRuns",
+    "List Maestro runs across all projects (newest first), or look up runs by their build/run name. Returns projectId + runId pairs for use with getMaestroRunStatus and getMaestroRunResults.",
+    {
+      buildName: z
+        .string()
+        .optional()
+        .describe("Look up runs with this exact run name instead of listing all runs"),
+      offset: z
+        .union([z.number(), z.string().transform(Number)])
+        .pipe(z.number().min(0))
+        .optional()
+        .default(0)
+        .describe("Offset for pagination (default: 0; ignored with buildName)"),
+      count: z
+        .union([z.number(), z.string().transform(Number)])
+        .pipe(z.number().min(1).max(100))
+        .optional()
+        .default(10)
+        .describe("Number of runs to retrieve (default: 10, max: 100; ignored with buildName)"),
+    },
+    async (args: { buildName?: string; offset?: number; count?: number }) => {
+      try {
+        let runs;
+        let heading;
+        if (args.buildName) {
+          const result = await client().findRunsByBuildName(args.buildName);
+          runs = result.data || [];
+          heading = `## Maestro Runs named "${args.buildName}" (${runs.length})\n\n`;
+        } else {
+          const offset = Number(args.offset ?? 0);
+          const count = Number(args.count ?? 10);
+          const result = await client().listRuns(offset, count);
+          runs = result.data || [];
+          heading = `## Maestro Runs (${runs.length} of ${result.meta?.total ?? "?"}, offset ${offset})\n\n`;
+        }
+
+        let out = heading;
+        if (runs.length === 0) {
+          out += "No Maestro runs found.\n";
+        }
+        for (const run of runs) {
+          const caps = run.capabilities as { deviceName?: string } | undefined;
+          const outcome =
+            run.status === "DONE" && run.success
+              ? "PASSED"
+              : run.status === "FAILED" || (run.status === "DONE" && !run.success)
+                ? "FAILED"
+                : run.status;
+          out += `- Run **${run.id}** (project ${run.project_id})${run.name ? ` "${run.name}"` : ""} — ${outcome}`;
+          if (caps?.deviceName) out += ` on ${caps.deviceName}`;
+          if (run.created_at) out += `, started ${run.created_at}`;
+          out += "\n";
+        }
+        out +=
+          "\nUse getMaestroRunStatus / getMaestroRunResults with a projectId + runId for details.";
+        return { content: [{ type: "text", text: out }] };
+      } catch (error) {
+        return handleMCPError("listMaestroRuns", error);
+      }
+    }
+  );
+
   tools.getMaestroFlowDetails = server.tool(
     "getMaestroFlowDetails",
     "Get the detailed result of a single Maestro flow: error messages, step-level JUnit report, and links to the video, screenshots, and device logs. Use this to diagnose why a flow failed before fixing it and calling retryMaestroRun.",

@@ -242,6 +242,89 @@ describe("Maestro Tools", () => {
     });
   });
 
+  describe("listMaestroProjects", () => {
+    it("lists projects with app, flows and run ids", async () => {
+      fetchMock.mockResolvedValueOnce(
+        jsonResponse({
+          data: [
+            {
+              id: 42,
+              name: "MyApp",
+              completed: true,
+              app: { bundle_id: "com.example.app", app_version: "1.2" },
+              flows: [{ id: 1, name: "login.yaml" }],
+              runs: [101, 102],
+              created_at: "2026-08-27T09:00:00Z",
+            },
+          ],
+          meta: { offset: 0, count: 10, total: 1 },
+        })
+      );
+
+      const tools = addMaestroTools(serverMock, {}, configMock);
+      const result = await tools.listMaestroProjects.handler({});
+
+      const text = result.content[0].text;
+      expect(text).toContain("Project 42 — MyApp");
+      expect(text).toContain("com.example.app v1.2");
+      expect(text).toContain("101, 102");
+      expect(fetchMock.mock.calls[0][0]).toContain("/maestro?offset=0&count=10");
+    });
+  });
+
+  describe("listMaestroRuns", () => {
+    it("lists recent runs across projects", async () => {
+      fetchMock.mockResolvedValueOnce(
+        jsonResponse({
+          data: [
+            {
+              id: 101,
+              project_id: 42,
+              name: "nightly",
+              status: "DONE",
+              success: 0,
+              capabilities: { deviceName: "Pixel 8" },
+              created_at: "2026-08-27T02:00:00Z",
+            },
+          ],
+          meta: { offset: 0, count: 10, total: 1 },
+        })
+      );
+
+      const tools = addMaestroTools(serverMock, {}, configMock);
+      const result = await tools.listMaestroRuns.handler({});
+
+      const text = result.content[0].text;
+      expect(text).toContain("Run **101** (project 42)");
+      expect(text).toContain("FAILED");
+      expect(text).toContain("Pixel 8");
+      expect(fetchMock.mock.calls[0][0]).toContain("/maestro/runs?offset=0&count=10");
+    });
+
+    it("looks up runs by build name", async () => {
+      fetchMock.mockResolvedValueOnce(
+        jsonResponse({
+          data: [{ id: 103, project_id: 42, name: "release-1.2", status: "DONE", success: 1 }],
+        })
+      );
+
+      const tools = addMaestroTools(serverMock, {}, configMock);
+      const result = await tools.listMaestroRuns.handler({ buildName: "release-1.2" });
+
+      expect(result.content[0].text).toContain("PASSED");
+      expect(fetchMock.mock.calls[0][0]).toContain("/maestro/runs/release-1.2");
+    });
+
+    it("handles a 404 for an unknown build name", async () => {
+      fetchMock.mockResolvedValueOnce(new Response("No Maestro runs found", { status: 404 }));
+
+      const tools = addMaestroTools(serverMock, {}, configMock);
+      const result = await tools.listMaestroRuns.handler({ buildName: "nope" });
+
+      expect(result.isError).toBe(true);
+    });
+  });
+
   describe("getMaestroFlowDetails", () => {
     it("returns errors, assets and the step report for a failed flow", async () => {
       fetchMock.mockResolvedValueOnce(

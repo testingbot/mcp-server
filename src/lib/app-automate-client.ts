@@ -79,6 +79,36 @@ export interface MaestroFlowResult extends MaestroFlowInfo {
   assets_synced?: boolean;
 }
 
+// GET /maestro — paginated project list (newest first).
+export interface MaestroProjectSummary {
+  id: number;
+  name?: string;
+  created_at?: string;
+  updated_at?: string;
+  completed: boolean;
+  app?: { app_url?: string; icon_url?: string; app_version?: string; bundle_id?: string };
+  flows?: Array<{ id: number; name?: string }>;
+  runs?: number[];
+}
+
+// GET /maestro/runs and /maestro/runs/:build_name — lightweight run summaries.
+export interface MaestroRunSummary {
+  id: number;
+  project_id: number;
+  name?: string;
+  status: string;
+  success?: number;
+  capabilities?: Record<string, unknown>;
+  created_at?: string;
+  completed_at?: string;
+}
+
+export interface PaginationMeta {
+  offset: number;
+  count: number;
+  total: number;
+}
+
 export interface MaestroRunStarted {
   success: boolean;
   id: number;
@@ -208,6 +238,24 @@ export class AppAutomateClient {
     if (!response.ok && response.status !== 409) {
       throw new Error(`Cancel failed with HTTP ${response.status}: ${await response.text()}`);
     }
+  }
+
+  async listProjects(
+    offset = 0,
+    count = 10
+  ): Promise<{ data: MaestroProjectSummary[]; meta: PaginationMeta }> {
+    return this.requestJson("GET", `/maestro?offset=${offset}&count=${count}`);
+  }
+
+  async listRuns(
+    offset = 0,
+    count = 10
+  ): Promise<{ data: MaestroRunSummary[]; meta: PaginationMeta }> {
+    return this.requestJson("GET", `/maestro/runs?offset=${offset}&count=${count}`);
+  }
+
+  async findRunsByBuildName(buildName: string): Promise<{ data: MaestroRunSummary[] }> {
+    return this.requestJson("GET", `/maestro/runs/${encodeURIComponent(buildName)}`);
   }
 
   async getFlowResult(
