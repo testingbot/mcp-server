@@ -1,6 +1,6 @@
 {
   "name": "@testingbot/mcp-server",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "main": "dist/index.js",
   "type": "module",
   "mcpName": "com.testingbot/mcp-server",
@@ -57,13 +57,24 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.4",
-    "@testingbot/automation-mcp": "^0.1.5",
+    "@testingbot/automation-mcp": "^0.1.6",
     "dotenv": "^16.4.5",
     "fflate": "^0.8.3",
     "pino": "^9.6.0",
     "pino-pretty": "^13.0.0",
     "testingbot-api": "^1.1.0",
     "zod": "^3.24.1"
+  },
+  "overrides": {
+    "deepmerge-ts": "^8.0.2",
+    "mocha": {
+      ".": "^11.8.0",
+      "diff": "^8.0.3",
+      "serialize-javascript": "^7.1.0"
+    },
+    "applesign": {
+      "uuid": "^11.1.1"
+    }
   },
   "devDependencies": {
     "@eslint/js": "^9.25.0",
