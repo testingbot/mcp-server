@@ -157,6 +157,58 @@ describe("Project Tools", () => {
   // setupTestingBot
   // ---------------------------------------------------------------------------
 
+  describe("mobile framework detection", () => {
+    it("detects a Maestro workspace from a .maestro directory", async () => {
+      writeFile(".maestro/login.yaml", "appId: com.example\n---\n- launchApp");
+
+      const tools = addProjectTools(serverMock, testingBotApiMock, configMock);
+      const result = await tools.setupTestingBot.handler({ projectRoot: tmpDir });
+
+      const text = result.content[0].text;
+      expect(text).toContain("**Framework**: maestro");
+      expect(text).toContain("uploadMaestroApp");
+      expect(text).toContain("maestroCheatSheet");
+    });
+
+    it("detects an Espresso project from the Android build file", async () => {
+      writeFile(
+        "app/build.gradle",
+        "plugins { id 'com.android.application' }\ndependencies { androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1' }"
+      );
+      writeFile("app/src/androidTest/java/com/example/LoginTest.java", "// test");
+
+      const tools = addProjectTools(serverMock, testingBotApiMock, configMock);
+      const result = await tools.setupTestingBot.handler({ projectRoot: tmpDir });
+
+      const text = result.content[0].text;
+      expect(text).toContain("**Framework**: espresso");
+      expect(text).toContain("uploadAppAutomateApp");
+    });
+
+    it("detects an XCUITest project from an Xcode project with a UITests target", async () => {
+      fs.mkdirSync(path.join(tmpDir, "MyApp.xcodeproj"), { recursive: true });
+      writeFile("MyAppUITests/MyAppUITests.swift", "// ui test");
+
+      const tools = addProjectTools(serverMock, testingBotApiMock, configMock);
+      const result = await tools.setupTestingBot.handler({ projectRoot: tmpDir });
+
+      const text = result.content[0].text;
+      expect(text).toContain("**Framework**: xcuitest");
+      expect(text).toContain("**Language**: swift");
+      expect(text).toContain("uploadAppAutomateApp");
+    });
+
+    it("prefers mobile detection over the node fallback", async () => {
+      writeFile("package.json", JSON.stringify({ devDependencies: { jest: "^29" } }));
+      writeFile(".maestro/smoke.yaml", "appId: com.example\n---\n- launchApp");
+
+      const tools = addProjectTools(serverMock, testingBotApiMock, configMock);
+      const result = await tools.setupTestingBot.handler({ projectRoot: tmpDir });
+
+      expect(result.content[0].text).toContain("**Framework**: maestro");
+    });
+  });
+
   describe("setupTestingBot", () => {
     it("returns a Playwright config snippet", async () => {
       writeFile("package.json", JSON.stringify({ devDependencies: { "@playwright/test": "^1" } }));

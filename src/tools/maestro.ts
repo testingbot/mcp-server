@@ -115,6 +115,67 @@ function formatRun(run: MaestroRunInfo): string {
   return out;
 }
 
+// Static syntax reference served by the maestroCheatSheet tool. Kept in-code
+// (not fetched) so it works offline and costs one cheap call for agents
+// writing flow YAML.
+const MAESTRO_CHEAT_SHEET = `## Maestro Flow Cheat Sheet
+
+A flow file is YAML: a header, \`---\`, then a list of commands.
+
+\`\`\`yaml
+appId: com.example.app        # required: bundle id / package name
+name: Checkout happy path     # optional
+tags: [smoke, checkout]       # optional, filter with includeTags/excludeTags
+env:
+  USERNAME: default-value     # overridable per run via runMaestroTest env
+---
+- launchApp
+- tapOn: "Log in"             # matches visible text (regex supported)
+- tapOn:
+    id: "login_button"        # matches accessibility/resource id
+- inputText: \${USERNAME}
+- pressKey: Enter
+- assertVisible: "Welcome"
+- assertNotVisible: "Error"
+- takeScreenshot: after-login # named screenshot
+\`\`\`
+
+### Common commands
+- \`launchApp\` / \`launchApp: { clearState: true }\` / \`stopApp\` / \`killApp\`
+- \`tapOn\`, \`doubleTapOn\`, \`longPressOn\` — by text, \`id\`, \`point: 50%,50%\`, or \`index\`
+- \`inputText: "..."\`, \`inputRandomEmail\`, \`inputRandomPersonName\`, \`eraseText\`
+- \`copyTextFrom: { id: "..." }\` then \`pasteText\`
+- \`scroll\`, \`scrollUntilVisible: { element: { text: "..." }, direction: DOWN }\`
+- \`swipe: { direction: LEFT }\` or with \`start\`/\`end\` points
+- \`back\` (Android), \`hideKeyboard\`, \`pressKey: Home|Enter|Back\`
+- \`openLink: https://example.com\` (deep links supported)
+- \`waitForAnimationToEnd\`, \`extendedWaitUntil: { visible: { text: "..." }, timeout: 10000 }\`
+- \`assertVisible\` / \`assertNotVisible\` / \`assertTrue: \${output.x == 'y'}\`
+- \`runFlow: subflow.yaml\` (compose flows), \`runFlow: { when: { visible: "..." }, file: ... }\` (conditional)
+- \`runScript: script.js\` (JavaScript, results in \`output\`), \`evalScript: \${...}\`
+- \`repeat: { times: 3, commands: [...] }\`
+- \`setLocation: { latitude: 50.8, longitude: 4.4 }\`, \`travel\` (GPS route)
+- \`addMedia: ["./receipt.png"]\` (push files to the device gallery)
+
+### Selectors
+\`\`\`yaml
+- tapOn:
+    text: "Buy"          # visible text or content-desc (regex ok: "Buy|Purchase")
+    id: "buy_btn"        # resource-id (Android) / accessibility id (iOS)
+    index: 0             # when multiple matches
+    enabled: true
+    optional: true       # don't fail the flow if not found
+    retryTapIfNoChange: false
+\`\`\`
+
+### Running on TestingBot
+1. \`uploadMaestroApp\` (.apk/.aab/.ipa) → projectId
+2. \`uploadMaestroFlows\` (directory, zip, or inline YAML — subflows keep relative paths)
+3. \`runMaestroTest\` — pick device (wildcards like "Pixel [8-9]"), \`realDevice: true\` for physical devices, \`env\` to override flow env vars, \`shardSplit\` for parallelism
+4. \`getMaestroRunStatus\` → \`getMaestroFlowDetails\` (errors, screenshots, video) → fix → \`retryMaestroRun\`
+
+Full command reference: https://docs.maestro.dev/api-reference/commands`;
+
 export default function addMaestroTools(
   server: any,
   _testingBotApi: any,
@@ -123,6 +184,15 @@ export default function addMaestroTools(
   const tools: Record<string, any> = {};
   // Lazily constructed so tb_login (which mutates config) is picked up.
   const client = () => new AppAutomateClient(config);
+
+  tools.maestroCheatSheet = server.tool(
+    "maestroCheatSheet",
+    "Get a Maestro flow YAML syntax reference: file structure, commands, selectors, and the TestingBot run workflow. Call this before writing or fixing Maestro flows.",
+    {},
+    async () => {
+      return { content: [{ type: "text", text: MAESTRO_CHEAT_SHEET }] };
+    }
+  );
 
   tools.uploadMaestroApp = server.tool(
     "uploadMaestroApp",

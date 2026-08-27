@@ -259,6 +259,19 @@ describe("Maestro Tools", () => {
     });
   });
 
+  describe("maestroCheatSheet", () => {
+    it("returns the syntax reference without hitting the API", async () => {
+      const tools = addMaestroTools(serverMock, {}, configMock);
+      const result = await tools.maestroCheatSheet.handler({});
+
+      const text = result.content[0].text;
+      expect(text).toContain("appId:");
+      expect(text).toContain("tapOn");
+      expect(text).toContain("runMaestroTest");
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+  });
+
   describe("uploadMaestroCompanionApp", () => {
     it("uploads a companion app and returns its tb:// url", async () => {
       const apkPath = path.join(tmpDir, "helper.apk");

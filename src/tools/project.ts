@@ -19,9 +19,21 @@ type Framework =
   | "jest"
   | "mocha"
   | "vitest"
+  | "maestro"
+  | "espresso"
+  | "xcuitest"
   | "unknown";
 
-type Language = "javascript" | "typescript" | "python" | "java" | "ruby" | "unknown";
+type Language =
+  | "javascript"
+  | "typescript"
+  | "python"
+  | "java"
+  | "kotlin"
+  | "swift"
+  | "ruby"
+  | "yaml"
+  | "unknown";
 
 interface DetectionResult {
   projectRoot: string;
@@ -69,6 +81,12 @@ const FRAMEWORK_DEFAULTS: Record<Framework, { globs: string[]; dirs: string[] }>
   },
   mocha: { globs: ["**/*.test.js", "**/*.spec.js"], dirs: ["test"] },
   vitest: { globs: ["**/*.test.ts", "**/*.test.js"], dirs: ["test", "tests"] },
+  maestro: { globs: ["**/*.yaml", "**/*.yml"], dirs: [".maestro", "maestro", "flows"] },
+  espresso: {
+    globs: ["**/*Test.java", "**/*Test.kt"],
+    dirs: ["app/src/androidTest", "src/androidTest"],
+  },
+  xcuitest: { globs: ["**/*UITest*.swift", "**/*UITests*.swift"], dirs: [] },
   unknown: { globs: ["**/*.test.*", "**/*.spec.*"], dirs: ["test", "tests"] },
 };
 
@@ -181,10 +199,97 @@ function detectFromNode(projectRoot: string): Partial<DetectionResult> | null {
   };
 }
 
+// Mobile-native projects (Maestro workspaces, Android/Espresso, iOS/XCUITest)
+// don't have a web-test manifest, so check for them before the language-based
+// detectors — an Android repo would otherwise land in detectFromJava as
+// "java/unknown".
+function detectFromMobile(projectRoot: string): Partial<DetectionResult> | null {
+  // Maestro: a .maestro workspace directory (the CLI's default), or a
+  // maestro/ flows directory with a config.yaml.
+  for (const dir of [".maestro", "maestro"]) {
+    const candidate = path.join(projectRoot, dir);
+    if (fs.existsSync(candidate) && fs.statSync(candidate).isDirectory()) {
+      return {
+        language: "yaml",
+        framework: "maestro",
+        testFileGlobs: [`${dir}/**/*.yaml`, `${dir}/**/*.yml`],
+        testDirs: [dir],
+        detectedFrom: `${dir}/ directory`,
+      };
+    }
+  }
+
+  // Espresso: an Android Gradle project with an androidTest source set or an
+  // espresso dependency in the build file.
+  for (const buildFile of [
+    "app/build.gradle",
+    "app/build.gradle.kts",
+    "build.gradle",
+    "build.gradle.kts",
+  ]) {
+    const p = path.join(projectRoot, buildFile);
+    if (!fs.existsSync(p)) continue;
+    const content = fs.readFileSync(p, "utf8");
+    const hasAndroidTestDir =
+      fs.existsSync(path.join(projectRoot, "app/src/androidTest")) ||
+      fs.existsSync(path.join(projectRoot, "src/androidTest"));
+    if (
+      /espresso/i.test(content) ||
+      (hasAndroidTestDir && /com\.android\.application|android\s*\{/.test(content))
+    ) {
+      return {
+        language: /\.kts$/.test(buildFile) ? "kotlin" : "java",
+        framework: "espresso",
+        testFileGlobs: FRAMEWORK_DEFAULTS.espresso.globs,
+        testDirs: FRAMEWORK_DEFAULTS.espresso.dirs,
+        detectedFrom: buildFile,
+      };
+    }
+  }
+
+  // XCUITest: an Xcode project/workspace plus a *UITests target directory.
+  let entries: fs.Dirent[] = [];
+  try {
+    entries = fs.readdirSync(projectRoot, { withFileTypes: true });
+  } catch {
+    return null;
+  }
+  const hasXcodeProject = entries.some(
+    (e) => e.name.endsWith(".xcodeproj") || e.name.endsWith(".xcworkspace")
+  );
+  const uiTestDirs = entries
+    .filter((e) => e.isDirectory() && /UITests?$/.test(e.name))
+    .map((e) => e.name);
+  if (hasXcodeProject && uiTestDirs.length > 0) {
+    return {
+      language: "swift",
+      framework: "xcuitest",
+      testFileGlobs: FRAMEWORK_DEFAULTS.xcuitest.globs,
+      testDirs: uiTestDirs,
+      detectedFrom: "Xcode project + UITests target",
+    };
+  }
+
+  return null;
+}
+
 export function detectFramework(projectRoot: string): DetectionResult {
   const resolved = path.resolve(projectRoot);
   if (!fs.existsSync(resolved) || !fs.statSync(resolved).isDirectory()) {
     throw new Error(`Project root does not exist or is not a directory: ${resolved}`);
+  }
+
+  const mobile = detectFromMobile(resolved);
+  if (mobile) {
+    return {
+      projectRoot: resolved,
+      language: mobile.language!,
+      framework: mobile.framework!,
+      testFileGlobs: mobile.testFileGlobs!,
+      testDirs: mobile.testDirs!,
+      packageManager: detectPackageManager(resolved),
+      detectedFrom: mobile.detectedFrom!,
+    };
   }
 
   const node = detectFromNode(resolved);
@@ -374,6 +479,43 @@ function configSnippet(framework: Framework, language: Language): string {
       "```",
     ].join("\n");
   }
+  if (framework === "maestro") {
+    return [
+      "Maestro flows run on TestingBot devices via the MCP tools on this server — no SDK config needed:",
+      "",
+      "1. `uploadMaestroApp` with your .apk/.ipa → returns a projectId (deduped by checksum)",
+      "2. `uploadMaestroFlows` with your flows directory (or inline YAML)",
+      "3. `runMaestroTest` with device capabilities (set `realDevice: true` for physical devices)",
+      "4. Poll `getMaestroRunStatus`, then `getMaestroRunResults` / `getMaestroFlowDetails`",
+      "",
+      "Call `maestroCheatSheet` for a Maestro YAML syntax reference.",
+      'From CI, the same runs via the CLI: `npx @testingbot/cli maestro app.apk ./flows --device "Pixel 8" --real-device --report junit`',
+    ].join("\n");
+  }
+  if (framework === "espresso") {
+    return [
+      "Espresso suites run on TestingBot devices via the MCP tools on this server — no SDK config needed:",
+      "",
+      "1. `uploadAppAutomateApp` (framework: espresso) with your app .apk → returns a projectId",
+      "2. `uploadAppAutomateTests` with the instrumented test .apk (from `./gradlew assembleAndroidTest`)",
+      "3. `runAppAutomateTest` with device capabilities (class/package/annotation filters supported)",
+      "4. Poll `getAppAutomateRunStatus`, then `getAppAutomateRunResults` for the JUnit report",
+      "",
+      'From CI: `npx @testingbot/cli espresso app.apk test.apk --device "Pixel 8" --real-device`',
+    ].join("\n");
+  }
+  if (framework === "xcuitest") {
+    return [
+      "XCUITest suites run on TestingBot devices via the MCP tools on this server — no SDK config needed:",
+      "",
+      "1. `uploadAppAutomateApp` (framework: xcuitest) with your app .ipa → returns a projectId",
+      "2. `uploadAppAutomateTests` with the zipped XCUITest runner bundle",
+      "3. `runAppAutomateTest` with device capabilities (set `realDevice: true` for physical devices)",
+      "4. Poll `getAppAutomateRunStatus`, then `getAppAutomateRunResults` for the JUnit report",
+      "",
+      'From CI: `npx @testingbot/cli xcuitest app.ipa tests.zip --device "iPhone 15" --real-device`',
+    ].join("\n");
+  }
   return [
     "No first-class TestingBot integration auto-detected.",
     "General pattern: point your driver at `https://hub.testingbot.com/wd/hub` (Selenium),",
@@ -480,7 +622,17 @@ export default function addProjectTools(
     {
       projectRoot: z.string().min(1).describe("Absolute path to the project root to inspect."),
       frameworkOverride: z
-        .enum(["playwright", "cypress", "webdriverio", "selenium-js", "nightwatch", "puppeteer"])
+        .enum([
+          "playwright",
+          "cypress",
+          "webdriverio",
+          "selenium-js",
+          "nightwatch",
+          "puppeteer",
+          "maestro",
+          "espresso",
+          "xcuitest",
+        ])
         .optional()
         .describe("Force a specific framework instead of using auto-detection."),
     },
