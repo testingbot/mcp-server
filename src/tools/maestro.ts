@@ -255,6 +255,13 @@ export default function addMaestroTools(
         .pipe(z.number().int().min(1).max(10))
         .optional()
         .describe("Split flows across this many parallel devices"),
+      otherApps: z
+        .array(z.string().regex(/^(tb|https?):\/\//, "Must be a tb:// or http(s):// URL"))
+        .max(4)
+        .optional()
+        .describe(
+          "Up to 4 companion app URLs (tb:// from uploadMaestroCompanionApp, or http(s)://) installed alongside the app under test"
+        ),
     },
     async (args: {
       projectId: number;
@@ -267,6 +274,7 @@ export default function addMaestroTools(
       includeTags?: string[];
       excludeTags?: string[];
       shardSplit?: number;
+      otherApps?: string[];
     }) => {
       try {
         const projectId = Number(args.projectId);
@@ -288,7 +296,8 @@ export default function addMaestroTools(
           projectId,
           capabilities,
           maestroOptions,
-          args.shardSplit
+          args.shardSplit,
+          args.otherApps
         );
 
         const runs = started.runs || [];
@@ -397,6 +406,32 @@ export default function addMaestroTools(
         return { content: [{ type: "text", text }] };
       } catch (error) {
         return handleMCPError("getMaestroRunResults", error);
+      }
+    }
+  );
+
+  tools.uploadMaestroCompanionApp = server.tool(
+    "uploadMaestroCompanionApp",
+    "Upload a companion app (.apk/.aab/.ipa) that should be installed alongside the app under test in a Maestro run. Returns a tb:// app URL to pass in runMaestroTest's otherApps parameter (max 4 per run).",
+    {
+      localFilePath: z.string().describe("Local path to the companion .apk, .aab, .ipa or .zip"),
+    },
+    async (args: { localFilePath: string }) => {
+      try {
+        const safePath = validateAppPath(args.localFilePath);
+        logger.info({ path: safePath }, "Uploading Maestro companion app");
+
+        const result = await client().uploadOtherApp(safePath);
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Companion app uploaded successfully!\n\n**App URL**: ${result.app_url}\n\nPass this URL in runMaestroTest's otherApps parameter to install it alongside the app under test.`,
+            },
+          ],
+        };
+      } catch (error) {
+        return handleMCPError("uploadMaestroCompanionApp", error);
       }
     }
   );

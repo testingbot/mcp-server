@@ -164,6 +164,23 @@ describe("Maestro Tools", () => {
       expect(runBody.maestroOptions.env).toEqual({ USERNAME: "demo" });
     });
 
+    it("passes companion app urls as top-level otherApps", async () => {
+      fetchMock.mockResolvedValueOnce(
+        jsonResponse({ success: true, id: 42, runs: [{ id: 104 }] })
+      );
+
+      const tools = addMaestroTools(serverMock, {}, configMock);
+      const result = await tools.runMaestroTest.handler({
+        projectId: 42,
+        platformName: "Android",
+        otherApps: ["tb://abc123", "https://example.com/helper.apk"],
+      });
+
+      expect(result.isError).toBeUndefined();
+      const runBody = JSON.parse(fetchMock.mock.calls[0][1].body);
+      expect(runBody.otherApps).toEqual(["tb://abc123", "https://example.com/helper.apk"]);
+    });
+
     it("surfaces API errors returned in a 200 body", async () => {
       fetchMock.mockResolvedValueOnce(jsonResponse({ success: false, errors: ["No devices available"] }));
 
@@ -239,6 +256,33 @@ describe("Maestro Tools", () => {
       expect(result.content[0].text).toContain("PASSED");
       expect(result.content[0].text).toContain("<testsuite");
       expect(fetchMock.mock.calls[1][0]).toContain("/42/101/junit_report");
+    });
+  });
+
+  describe("uploadMaestroCompanionApp", () => {
+    it("uploads a companion app and returns its tb:// url", async () => {
+      const apkPath = path.join(tmpDir, "helper.apk");
+      fs.writeFileSync(apkPath, "fake-apk");
+      fetchMock.mockResolvedValueOnce(jsonResponse({ id: 9, app_url: "tb://abc123" }));
+
+      const tools = addMaestroTools(serverMock, {}, configMock);
+      const result = await tools.uploadMaestroCompanionApp.handler({ localFilePath: apkPath });
+
+      expect(result.isError).toBeUndefined();
+      expect(result.content[0].text).toContain("tb://abc123");
+      expect(result.content[0].text).toContain("otherApps");
+      expect(fetchMock.mock.calls[0][0]).toContain("/maestro/other-apps");
+    });
+
+    it("rejects disallowed extensions", async () => {
+      const badPath = path.join(tmpDir, "helper.exe");
+      fs.writeFileSync(badPath, "nope");
+
+      const tools = addMaestroTools(serverMock, {}, configMock);
+      const result = await tools.uploadMaestroCompanionApp.handler({ localFilePath: badPath });
+
+      expect(result.isError).toBe(true);
+      expect(fetchMock).not.toHaveBeenCalled();
     });
   });
 

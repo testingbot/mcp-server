@@ -185,6 +185,19 @@ export class AppAutomateClient {
     return this.uploadFile(`/maestro/app`, filePath, this.contentTypeFor(filePath));
   }
 
+  // Companion apps installed alongside the app under test; the returned
+  // tb:// app_url goes into the run's otherApps list.
+  async uploadOtherApp(filePath: string): Promise<{ id: number; app_url: string }> {
+    return this.uploadFile(
+      `/maestro/other-apps`,
+      filePath,
+      this.contentTypeFor(filePath)
+    ) as Promise<{
+      id: number;
+      app_url: string;
+    }>;
+  }
+
   async uploadFlowsZip(projectId: number, zipBuffer: Buffer, fileName: string): Promise<unknown> {
     const form = new FormData();
     form.append(
@@ -199,12 +212,14 @@ export class AppAutomateClient {
     projectId: number,
     capabilities: MaestroCapabilities,
     maestroOptions?: MaestroRunOptions,
-    shardSplit?: number
+    shardSplit?: number,
+    otherApps?: string[]
   ): Promise<MaestroRunStarted> {
     return this.requestJson("POST", `/maestro/${projectId}/run`, {
       capabilities: [capabilities],
       ...(maestroOptions && Object.keys(maestroOptions).length > 0 && { maestroOptions }),
       ...(shardSplit && { shardSplit }),
+      ...(otherApps && otherApps.length > 0 && { otherApps }),
     });
   }
 
