@@ -16,6 +16,7 @@ After install, set your credentials from [TestingBot account settings](https://t
 
 ## Features
 
+- 📱 **App Automate** - Run Maestro, Espresso, and XCUITest suites on real devices and emulators, straight from the agent
 - 🖥️ **Live Testing** - Start interactive manual testing sessions on real browsers and devices
 - 🌐 **Browser & Device Management** - Query available browsers and real devices
 - 🧪 **Test Management** - Create, retrieve, update, and delete tests with comprehensive details
@@ -376,6 +377,108 @@ Delete a file from TestingBot storage.
 **Example prompt:**
 > "Delete app tb://app123 from storage"
 
+### App Automate — Maestro
+
+Run [Maestro](https://maestro.dev) flows on TestingBot real devices, emulators, and simulators. Runs are **asynchronous**: start one, poll its status, then fetch results — the agent is never blocked while devices execute.
+
+#### `uploadMaestroApp`
+Upload the app under test (`.apk`, `.aab`, `.ipa`, or zipped `.app`). Uploads are deduplicated by checksum — re-running with the same binary is instant.
+
+**Parameters:**
+- `localFilePath`: Local path to the app file
+
+Returns a **Project ID** used by the other Maestro tools.
+
+**Example prompt:**
+> "Upload ./build/app.apk for Maestro testing"
+
+#### `uploadMaestroFlows`
+Upload the Maestro flow YAML files for a project. Accepts a directory (structure preserved, so `runFlow` subflows keep working), a pre-built `.zip`, or **inline YAML** written by the agent. Replaces previously uploaded flows.
+
+**Parameters:**
+- `projectId`: Project ID from `uploadMaestroApp`
+- `flowsPath` (optional): Directory or `.zip` of flow YAML files
+- `flows` (optional): Inline flows as `[{ fileName, content }]`
+
+#### `runMaestroTest`
+Start a Maestro run. Returns immediately with the run ID — poll with `getMaestroRunStatus`.
+
+**Parameters:**
+- `projectId`: Project ID
+- `platformName`: "Android" or "iOS"
+- `deviceName` (optional): Device name, wildcards/regex supported (e.g. `"Pixel 8"`, `"iPhone 1[4-6]"`, `"*"`)
+- `version` (optional): OS version
+- `realDevice` (optional): Run on a physical device (required for `.ipa`)
+- `name` (optional): Run name shown in the dashboard
+- `env` (optional): Environment variables passed to the flows
+- `includeTags` / `excludeTags` (optional): Filter flows by Maestro tags
+- `shardSplit` (optional): Split flows across parallel devices
+- `otherApps` (optional): Up to 4 companion app URLs to install alongside the app
+
+**Example prompt:**
+> "Run my Maestro flows on a real Pixel 8 with Android 14"
+
+#### `getMaestroRunStatus`
+Poll run progress. Lists per-flow statuses (WAITING, READY, DONE, FAILED, CANCELLED), failures first.
+
+#### `getMaestroRunResults`
+Final results of a completed run: per-flow outcomes plus the JUnit XML report.
+
+#### `getMaestroFlowDetails`
+Deep-dive into one flow: error messages, step-level JUnit report, and links to the video, screenshots, and device logs. This is the debugging tool — fetch it for a failed flow, fix the YAML, then retry.
+
+**Parameters:** `projectId`, `runId`, `flowId`
+
+#### `cancelMaestroRun` / `retryMaestroRun`
+Cancel a running run, or retry a run — pass `flowId` to retry only a single failed flow.
+
+#### `uploadMaestroCompanionApp`
+Upload a supplementary app installed alongside the app under test. Returns a `tb://` URL for `runMaestroTest`'s `otherApps`.
+
+#### `listMaestroProjects` / `listMaestroRuns`
+Discover existing projects (app, flows, run IDs) and runs across the account. `listMaestroRuns` accepts a `buildName` to look up runs by name — e.g. "rerun whatever failed in last night's `nightly` build".
+
+#### `maestroCheatSheet`
+Returns a Maestro YAML syntax reference (commands, selectors, flow structure, and the TestingBot workflow). Agents call this before writing or fixing flows.
+
+**Example workflow:**
+```
+User: "Run the Maestro flows in ./flows against ./app.apk on a real Pixel 8. Fix any failures."
+Assistant: [uploadMaestroApp → uploadMaestroFlows → runMaestroTest]
+Assistant: [polls getMaestroRunStatus until complete]
+Assistant: [getMaestroFlowDetails for the failed flow, reads the error + screenshots]
+Assistant: [fixes the flow YAML, uploadMaestroFlows, retryMaestroRun]
+```
+
+### App Automate — Espresso & XCUITest
+
+Run pre-built Espresso (Android) and XCUITest (iOS) suites on TestingBot devices. Same async pattern: start, poll, fetch results.
+
+#### `uploadAppAutomateApp`
+Upload the app under test: `.apk`/`.aab` for Espresso, `.ipa` for XCUITest.
+
+**Parameters:** `framework` ("espresso" or "xcuitest"), `localFilePath`
+
+#### `uploadAppAutomateTests`
+Upload the test suite: the instrumented test `.apk` for Espresso, or the zipped XCUITest runner bundle.
+
+**Parameters:** `framework`, `projectId`, `localFilePath`
+
+#### `runAppAutomateTest`
+Start a run. Returns immediately with the run ID.
+
+**Parameters:**
+- `framework`, `projectId`
+- `deviceName`, `version`, `realDevice`, `name`, `build` (optional): device selection and metadata
+- `testClasses`, `skipTestClasses`, `packages`, `annotations`, `testRunner` (optional, Espresso only): test filtering
+- `locale`, `timeZone` (optional)
+
+**Example prompt:**
+> "Run the Espresso suite on a real Galaxy S23, only the com.example.LoginTest class"
+
+#### `getAppAutomateRunStatus` / `getAppAutomateRunResults`
+Poll run progress, then fetch per-run outcomes and the JUnit XML report. Each run's Appium session ID is surfaced, so `getTestDetails` / `getFailureLogs` work for logs and video.
+
 ### Screenshot Testing
 
 #### `takeScreenshot`
@@ -526,7 +629,22 @@ User: "Show me the last 10 tests"
 Assistant: [Shows recent test results]
 ```
 
-### Example 3: Build Management
+### Example 3: Agent-Driven Maestro Testing on Real Devices
+
+```
+User: "Write a Maestro flow that logs into my app and run it on a real Pixel 8"
+Assistant: [maestroCheatSheet for syntax, writes the flow YAML]
+Assistant: [uploadMaestroApp ./app.apk → project 42]
+Assistant: [uploadMaestroFlows with the inline flow]
+Assistant: [runMaestroTest on Pixel 8 with realDevice: true → run 101]
+Assistant: [polls getMaestroRunStatus, then getMaestroRunResults]
+
+User: "The checkout flow failed — figure out why and fix it"
+Assistant: [getMaestroFlowDetails → reads error + screenshots + video]
+Assistant: [fixes the YAML, uploadMaestroFlows, retryMaestroRun]
+```
+
+### Example 4: Build Management
 
 ```
 User: "Show me my recent builds"
@@ -539,7 +657,7 @@ User: "Mark test xyz789 as passed with build name 'Release 1.0'"
 Assistant: [Updates test]
 ```
 
-### Example 4: Team & Tunnel Management
+### Example 5: Team & Tunnel Management
 
 ```
 User: "Show me my team information"
@@ -552,7 +670,7 @@ User: "Show me all active tunnels"
 Assistant: [Lists active TestingBot tunnels]
 ```
 
-### Example 5: CDP Automation
+### Example 6: CDP Automation
 
 ```
 User: "Create a CDP session on Chrome latest with Windows 11"
@@ -702,8 +820,11 @@ testingbot-mcp-server/
 │   │   ├── error.ts          # Error classes
 │   │   ├── logger.ts         # Logging setup
 │   │   ├── utils.ts          # Utility functions
-│   │   └── get-auth.ts       # Authentication helpers
+│   │   ├── get-auth.ts       # Authentication helpers
+│   │   └── app-automate-client.ts  # REST client for Maestro/Espresso/XCUITest
 │   └── tools/
+│       ├── maestro.ts        # Maestro run tools (upload, run, poll, diagnose)
+│       ├── app-automate.ts   # Espresso & XCUITest run tools
 │       ├── browsers.ts       # Browser & device tools
 │       ├── tests.ts          # Test management tools
 │       ├── builds.ts         # Build management tools
