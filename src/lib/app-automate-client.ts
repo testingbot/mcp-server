@@ -38,7 +38,7 @@ export interface MaestroFlowInfo {
   shard_index?: number;
   error_messages?: string[];
   assets?: {
-    logs?: Record<string, string>;
+    logs?: Record<string, string> | string;
     video?: string | false;
     screenshots?: string[];
   };
@@ -62,6 +62,21 @@ export interface MaestroProjectStatus {
 
 export interface MaestroRunDetails extends MaestroRunInfo {
   completed: boolean;
+}
+
+// GET /:project_id/:run_id/flow/:flow_id — per-flow result with step-level
+// JUnit report and asset links (see MaestroRunTest#json_payload in web).
+export interface MaestroFlowResult extends MaestroFlowInfo {
+  maestro_flow_id?: number;
+  test_case_id?: number;
+  report?: string;
+  requested_at?: string;
+  completed_at?: string;
+  test?: {
+    sessionId?: string;
+    environment?: { name?: string; os?: string; version?: string };
+  };
+  assets_synced?: boolean;
 }
 
 export interface MaestroRunStarted {
@@ -193,6 +208,14 @@ export class AppAutomateClient {
     if (!response.ok && response.status !== 409) {
       throw new Error(`Cancel failed with HTTP ${response.status}: ${await response.text()}`);
     }
+  }
+
+  async getFlowResult(
+    projectId: number,
+    runId: number,
+    flowId: number
+  ): Promise<MaestroFlowResult> {
+    return this.requestJson("GET", `/maestro/${projectId}/${runId}/flow/${flowId}`);
   }
 
   async retryRun(projectId: number, runId: number): Promise<unknown> {

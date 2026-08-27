@@ -242,6 +242,66 @@ describe("Maestro Tools", () => {
     });
   });
 
+  describe("getMaestroFlowDetails", () => {
+    it("returns errors, assets and the step report for a failed flow", async () => {
+      fetchMock.mockResolvedValueOnce(
+        jsonResponse({
+          id: 5,
+          name: "checkout",
+          status: "FAILED",
+          success: 0,
+          error_messages: ["Element not found: Buy button"],
+          completed_at: "2026-08-27T10:00:00Z",
+          report: '<testsuite tests="4" failures="1"/>',
+          test: { sessionId: "sess-1", environment: { name: "Pixel 8", version: "14" } },
+          assets: {
+            video: "https://testingbot.com/video/sess-1.mp4",
+            screenshots: ["https://testingbot.com/shot1.png"],
+            logs: "https://testingbot.com/logs/sess-1",
+          },
+          assets_synced: true,
+        })
+      );
+
+      const tools = addMaestroTools(serverMock, {}, configMock);
+      const result = await tools.getMaestroFlowDetails.handler({
+        projectId: 42,
+        runId: 101,
+        flowId: 5,
+      });
+
+      const text = result.content[0].text;
+      expect(text).toContain("FAILED");
+      expect(text).toContain("Element not found: Buy button");
+      expect(text).toContain("sess-1.mp4");
+      expect(text).toContain("shot1.png");
+      expect(text).toContain('<testsuite tests="4"');
+      expect(fetchMock.mock.calls[0][0]).toContain("/42/101/flow/5");
+    });
+
+    it("notes when assets are still syncing", async () => {
+      fetchMock.mockResolvedValueOnce(
+        jsonResponse({
+          id: 5,
+          name: "checkout",
+          status: "DONE",
+          success: 1,
+          assets_synced: false,
+        })
+      );
+
+      const tools = addMaestroTools(serverMock, {}, configMock);
+      const result = await tools.getMaestroFlowDetails.handler({
+        projectId: 42,
+        runId: 101,
+        flowId: 5,
+      });
+
+      expect(result.content[0].text).toContain("PASSED");
+      expect(result.content[0].text).toContain("still syncing");
+    });
+  });
+
   describe("cancelMaestroRun", () => {
     it("cancels a run", async () => {
       fetchMock.mockResolvedValueOnce(jsonResponse({ success: true }));

@@ -401,6 +401,78 @@ export default function addMaestroTools(
     }
   );
 
+  tools.getMaestroFlowDetails = server.tool(
+    "getMaestroFlowDetails",
+    "Get the detailed result of a single Maestro flow: error messages, step-level JUnit report, and links to the video, screenshots, and device logs. Use this to diagnose why a flow failed before fixing it and calling retryMaestroRun.",
+    {
+      projectId: z
+        .union([z.number(), z.string().transform(Number)])
+        .pipe(z.number().int().positive())
+        .describe("Project ID"),
+      runId: z
+        .union([z.number(), z.string().transform(Number)])
+        .pipe(z.number().int().positive())
+        .describe("Run ID"),
+      flowId: z
+        .union([z.number(), z.string().transform(Number)])
+        .pipe(z.number().int().positive())
+        .describe("Flow ID (from getMaestroRunStatus output)"),
+    },
+    async (args: { projectId: number; runId: number; flowId: number }) => {
+      try {
+        const flow = await client().getFlowResult(
+          Number(args.projectId),
+          Number(args.runId),
+          Number(args.flowId)
+        );
+
+        const outcome =
+          flow.status === "DONE" && flow.success
+            ? "PASSED ✅"
+            : flow.status === "FAILED" || flow.success === 0
+              ? "FAILED ❌"
+              : flow.status;
+        let text = `## Flow "${flow.name}" (id ${flow.id}) — ${outcome}\n\n`;
+        if (flow.error_messages?.length) {
+          text += `### Errors\n${flow.error_messages.map((m) => `- ${m}`).join("\n")}\n\n`;
+        }
+        if (flow.test?.environment?.name) {
+          const env = flow.test.environment;
+          text += `- **Device**: ${env.name}${env.version ? ` (${env.version})` : ""}\n`;
+        }
+        if (flow.test?.sessionId) {
+          text += `- **Session ID**: ${flow.test.sessionId}\n`;
+        }
+        if (flow.completed_at) {
+          text += `- **Completed**: ${flow.completed_at}\n`;
+        }
+        if (flow.assets) {
+          text += `\n### Assets\n`;
+          if (flow.assets.video) text += `- **Video**: ${flow.assets.video}\n`;
+          if (flow.assets.screenshots?.length) {
+            text += flow.assets.screenshots.map((s) => `- **Screenshot**: ${s}`).join("\n") + "\n";
+          }
+          if (flow.assets.logs) {
+            text += `- **Logs**: ${
+              typeof flow.assets.logs === "string"
+                ? flow.assets.logs
+                : JSON.stringify(flow.assets.logs)
+            }\n`;
+          }
+        } else if (flow.assets_synced === false) {
+          text += `\nAssets (video/screenshots/logs) are still syncing — check again shortly.\n`;
+        }
+        if (flow.report) {
+          text += `\n### Step Report\n\n\`\`\`xml\n${flow.report}\n\`\`\``;
+        }
+
+        return { content: [{ type: "text", text }] };
+      } catch (error) {
+        return handleMCPError("getMaestroFlowDetails", error);
+      }
+    }
+  );
+
   tools.cancelMaestroRun = server.tool(
     "cancelMaestroRun",
     "Cancel a running Maestro run.",
