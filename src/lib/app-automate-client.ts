@@ -4,13 +4,15 @@ import path from "path";
 import { TestingBotConfig } from "./types.js";
 import { getAuth } from "./get-auth.js";
 
-// Minimal REST client for TestingBot's App Automate (Maestro) API.
-// These endpoints are not covered by the testingbot-api npm package, so we
-// call them directly. Endpoint contract mirrors testingbotctl's Maestro
-// provider (https://github.com/testingbot/testingbotctl).
-const BASE_URL = "https://api.testingbot.com/v1/app-automate/maestro";
+// Minimal REST client for TestingBot's App Automate (Maestro, Espresso,
+// XCUITest) API. These endpoints are not covered by the testingbot-api npm
+// package, so we call them directly. Endpoint contract mirrors
+// testingbotctl's providers (https://github.com/testingbot/testingbotctl).
+const APP_AUTOMATE_URL = "https://api.testingbot.com/v1/app-automate";
 const JSON_TIMEOUT_MS = 30_000;
 const UPLOAD_TIMEOUT_MS = 600_000;
+
+export type AppAutomateFramework = "espresso" | "xcuitest";
 
 export interface MaestroCapabilities {
   deviceName: string;
@@ -62,6 +64,49 @@ export interface MaestroRunDetails extends MaestroRunInfo {
   completed: boolean;
 }
 
+export interface MaestroRunStarted {
+  success: boolean;
+  id: number;
+  runs?: Array<{ id: number; capabilities?: Record<string, unknown>; flows?: MaestroFlowInfo[] }>;
+}
+
+// Espresso and XCUITest share one project/run shape (see the Grape API:
+// app_automate_espresso_api.rb / app_automate_xcuitest_api.rb in web).
+export interface FrameworkCapabilities {
+  deviceName: string;
+  platformName: "Android" | "iOS";
+  version?: string;
+  name?: string;
+  build?: string;
+  realDevice?: string;
+  [key: string]: unknown;
+}
+
+export interface FrameworkRunInfo {
+  id: number;
+  created_at?: string;
+  status: string;
+  capabilities?: Record<string, unknown>;
+  success: boolean;
+  report?: string;
+  test?: {
+    sessionId?: string;
+    environment?: { name?: string; os?: string; version?: string };
+  };
+}
+
+export interface FrameworkProjectStatus {
+  runs: FrameworkRunInfo[];
+  success: boolean;
+  completed: boolean;
+}
+
+export interface FrameworkRunStarted {
+  success: boolean;
+  id: number;
+  runs: Array<{ id: number; capabilities?: Record<string, unknown> }>;
+}
+
 export class AppAutomateClient {
   private authHeader: string;
 
@@ -84,7 +129,7 @@ export class AppAutomateClient {
   // binary was uploaded before, so re-runs skip the upload entirely.
   async findAppByChecksum(checksum: string): Promise<number | null> {
     try {
-      const result = await this.requestJson("POST", `/app/checksum`, { checksum });
+      const result = await this.requestJson("POST", `/maestro/app/checksum`, { checksum });
       return result.app_exists && result.id ? Number(result.id) : null;
     } catch {
       return null; // checksum check is an optimization; fall back to upload
@@ -92,14 +137,7 @@ export class AppAutomateClient {
   }
 
   async uploadApp(filePath: string): Promise<{ id: number }> {
-    const ext = path.extname(filePath).toLowerCase();
-    const contentType =
-      ext === ".apk"
-        ? "application/vnd.android.package-archive"
-        : ext === ".zip"
-          ? "application/zip"
-          : "application/octet-stream";
-    return this.uploadFile(`/app`, filePath, contentType);
+    return this.uploadFile(`/maestro/app`, filePath, this.contentTypeFor(filePath));
   }
 
   async uploadFlowsZip(projectId: number, zipBuffer: Buffer, fileName: string): Promise<unknown> {
@@ -109,7 +147,7 @@ export class AppAutomateClient {
       new Blob([new Uint8Array(zipBuffer)], { type: "application/zip" }),
       fileName
     );
-    return this.submitForm(`/${projectId}/tests`, form);
+    return this.submitForm(`/maestro/${projectId}/tests`, form);
   }
 
   async startRun(
@@ -117,8 +155,8 @@ export class AppAutomateClient {
     capabilities: MaestroCapabilities,
     maestroOptions?: MaestroRunOptions,
     shardSplit?: number
-  ): Promise<unknown> {
-    return this.requestJson("POST", `/${projectId}/run`, {
+  ): Promise<MaestroRunStarted> {
+    return this.requestJson("POST", `/maestro/${projectId}/run`, {
       capabilities: [capabilities],
       ...(maestroOptions && Object.keys(maestroOptions).length > 0 && { maestroOptions }),
       ...(shardSplit && { shardSplit }),
@@ -126,17 +164,17 @@ export class AppAutomateClient {
   }
 
   async getProjectStatus(projectId: number): Promise<MaestroProjectStatus> {
-    return this.requestJson("GET", `/${projectId}`);
+    return this.requestJson("GET", `/maestro/${projectId}`);
   }
 
   async getRun(projectId: number, runId: number): Promise<MaestroRunDetails> {
-    return this.requestJson("GET", `/${projectId}/${runId}`);
+    return this.requestJson("GET", `/maestro/${projectId}/${runId}`);
   }
 
   async getJunitReport(projectId: number, runId: number): Promise<string> {
     const response = await this.rawRequest(
       "GET",
-      `/${projectId}/${runId}/junit_report`,
+      `/maestro/${projectId}/${runId}/junit_report`,
       undefined,
       JSON_TIMEOUT_MS
     );
@@ -146,7 +184,7 @@ export class AppAutomateClient {
   async cancelRun(projectId: number, runId: number): Promise<void> {
     const response = await this.rawRequest(
       "POST",
-      `/${projectId}/${runId}/cancel`,
+      `/maestro/${projectId}/${runId}/cancel`,
       {},
       JSON_TIMEOUT_MS,
       true
@@ -158,11 +196,88 @@ export class AppAutomateClient {
   }
 
   async retryRun(projectId: number, runId: number): Promise<unknown> {
-    return this.requestJson("POST", `/${projectId}/${runId}/retry`, {});
+    return this.requestJson("POST", `/maestro/${projectId}/${runId}/retry`, {});
   }
 
   async retryFlow(projectId: number, runId: number, flowId: number): Promise<unknown> {
-    return this.requestJson("POST", `/${projectId}/${runId}/${flowId}/retry`, {});
+    return this.requestJson("POST", `/maestro/${projectId}/${runId}/${flowId}/retry`, {});
+  }
+
+  // --- Espresso / XCUITest (shared endpoint shape, no checksum/cancel/retry) ---
+
+  async uploadFrameworkApp(
+    framework: AppAutomateFramework,
+    filePath: string
+  ): Promise<{ id: number }> {
+    return this.uploadFile(`/${framework}/app`, filePath, this.contentTypeFor(filePath));
+  }
+
+  async uploadFrameworkTests(
+    framework: AppAutomateFramework,
+    projectId: number,
+    filePath: string
+  ): Promise<{ id: number }> {
+    return this.uploadFile(
+      `/${framework}/${projectId}/tests`,
+      filePath,
+      this.contentTypeFor(filePath)
+    );
+  }
+
+  // Espresso expects its options under `espressoOptions`; XCUITest under `options`.
+  async startFrameworkRun(
+    framework: AppAutomateFramework,
+    projectId: number,
+    capabilities: FrameworkCapabilities,
+    options?: Record<string, unknown>
+  ): Promise<FrameworkRunStarted> {
+    const optionsKey = framework === "espresso" ? "espressoOptions" : "options";
+    return this.requestJson("POST", `/${framework}/${projectId}/run`, {
+      capabilities: [capabilities],
+      ...(options && Object.keys(options).length > 0 && { [optionsKey]: options }),
+    });
+  }
+
+  async getFrameworkProject(
+    framework: AppAutomateFramework,
+    projectId: number
+  ): Promise<FrameworkProjectStatus> {
+    return this.requestJson("GET", `/${framework}/${projectId}`);
+  }
+
+  async getFrameworkRun(
+    framework: AppAutomateFramework,
+    projectId: number,
+    runId: number
+  ): Promise<FrameworkRunInfo> {
+    return this.requestJson("GET", `/${framework}/${projectId}/${runId}`);
+  }
+
+  // Project-level JUnit XML report (all runs). XCUITest additionally has a
+  // per-run junit_report endpoint; Espresso does not.
+  async getFrameworkProjectReport(
+    framework: AppAutomateFramework,
+    projectId: number
+  ): Promise<string> {
+    const response = await this.rawRequest(
+      "GET",
+      `/${framework}/${projectId}/report`,
+      undefined,
+      JSON_TIMEOUT_MS
+    );
+    return response.text();
+  }
+
+  async getXcuitestRunJunitReport(projectId: number, runId: number): Promise<string> {
+    const result = await this.requestJson("GET", `/xcuitest/${projectId}/${runId}/junit_report`);
+    return result.junit_report ?? "";
+  }
+
+  private contentTypeFor(filePath: string): string {
+    const ext = path.extname(filePath).toLowerCase();
+    if (ext === ".apk") return "application/vnd.android.package-archive";
+    if (ext === ".zip") return "application/zip";
+    return "application/octet-stream";
   }
 
   private async uploadFile(
@@ -181,7 +296,7 @@ export class AppAutomateClient {
   }
 
   private async submitForm(endpoint: string, form: FormData): Promise<unknown> {
-    const response = await fetch(`${BASE_URL}${endpoint}`, {
+    const response = await fetch(`${APP_AUTOMATE_URL}${endpoint}`, {
       method: "POST",
       headers: { Authorization: this.authHeader },
       body: form,
@@ -202,7 +317,7 @@ export class AppAutomateClient {
     timeoutMs: number,
     allowErrorStatus = false
   ): Promise<Response> {
-    const response = await fetch(`${BASE_URL}${endpoint}`, {
+    const response = await fetch(`${APP_AUTOMATE_URL}${endpoint}`, {
       method,
       headers: {
         Authorization: this.authHeader,
@@ -221,7 +336,9 @@ export class AppAutomateClient {
   private async parseResponse(response: Response): Promise<any> {
     const result = await response.json();
     // The API can report failures inside a 200 body as { success: false, errors: [...] }.
-    if (result && result.success === false) {
+    // Note: status endpoints also carry a `success` field meaning "all runs
+    // passed" — only treat it as an error when an error payload accompanies it.
+    if (result && result.success === false && (result.errors || result.error)) {
       throw new Error(
         result.errors?.join("\n") || result.error || "TestingBot API reported failure"
       );

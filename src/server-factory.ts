@@ -21,6 +21,7 @@ import addTunnelTools from "./tools/tunnels.js";
 import addLogTools from "./tools/logs.js";
 import addProjectTools from "./tools/project.js";
 import addMaestroTools from "./tools/maestro.js";
+import addAppAutomateTools from "./tools/app-automate.js";
 import addAuthTools from "./tools/auth.js";
 import { addAutomationTools, type AutomationHandle } from "@testingbot/automation-mcp";
 
@@ -169,6 +170,7 @@ export class TestingBotMcpServer {
       addLogTools,
       addProjectTools,
       addMaestroTools,
+      addAppAutomateTools,
     ];
 
     toolAdders.forEach((adder) => {

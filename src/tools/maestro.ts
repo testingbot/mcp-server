@@ -284,15 +284,18 @@ export default function addMaestroTools(
         if (args.excludeTags?.length) maestroOptions.excludeTags = args.excludeTags;
 
         logger.info({ projectId, capabilities }, "Starting Maestro run");
-        await client().startRun(projectId, capabilities, maestroOptions, args.shardSplit);
+        const started = await client().startRun(
+          projectId,
+          capabilities,
+          maestroOptions,
+          args.shardSplit
+        );
 
-        // The run endpoint doesn't return run IDs; the project status does.
-        const status = await client().getProjectStatus(projectId);
-        const runs = status.runs || [];
+        const runs = started.runs || [];
         const runList = runs
           .map(
             (run) =>
-              `- Run **${run.id}** on ${run.capabilities?.deviceName || "device"} — ${run.status}`
+              `- Run **${run.id}**${run.flows?.length ? ` (${run.flows.length} flow${run.flows.length === 1 ? "" : "s"})` : ""}`
           )
           .join("\n");
 

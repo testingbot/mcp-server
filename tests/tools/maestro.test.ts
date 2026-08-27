@@ -134,15 +134,13 @@ describe("Maestro Tools", () => {
 
   describe("runMaestroTest", () => {
     it("starts a run and reports run ids without waiting for completion", async () => {
-      fetchMock
-        .mockResolvedValueOnce(jsonResponse({ success: true })) // run
-        .mockResolvedValueOnce(
-          jsonResponse({
-            success: true,
-            completed: false,
-            runs: [{ id: 101, status: "WAITING", success: 0, capabilities: { deviceName: "Pixel 8", platformName: "Android" } }],
-          })
-        );
+      fetchMock.mockResolvedValueOnce(
+        jsonResponse({
+          success: true,
+          id: 42,
+          runs: [{ id: 101, capabilities: { deviceName: "Pixel 8", platformName: "Android" } }],
+        })
+      );
 
       const tools = addMaestroTools(serverMock, {}, configMock);
       const result = await tools.runMaestroTest.handler({
