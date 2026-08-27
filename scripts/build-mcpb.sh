@@ -71,7 +71,8 @@ fi
 ok "staged to $STAGE"
 
 header "3/5  npm ci --omit=dev (production deps only, this is the slow step)"
-( cd "$STAGE" && npm ci --omit=dev --no-audit --no-fund --silent )
+# --allow-git=all: recent npm blocks transitive git deps (fs-walk via appium-mcp)
+( cd "$STAGE" && npm ci --omit=dev --allow-git=all --no-audit --no-fund --silent )
 ok "production node_modules installed"
 
 header "4/5  mcpb validate + pack"

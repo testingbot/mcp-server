@@ -48,7 +48,8 @@ jobs:
         run: npm install -g @anthropic-ai/mcpb
 
       - name: Install dependencies
-        run: npm ci
+        # --allow-git=all: recent npm blocks transitive git deps (fs-walk via appium-mcp)
+        run: npm ci --allow-git=all
 
       - name: Build .mcpb
         run: npm run mcpb

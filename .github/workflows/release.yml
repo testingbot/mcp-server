@@ -34,8 +34,11 @@ jobs:
       - name: Ensure npm supports trusted publishing
         run: npm install -g npm@latest
 
+      # --allow-git=all: recent npm blocks transitive git dependencies by
+      # default, and appium-mcp (via automation-mcp) pins applesign's fs-walk
+      # to a GitHub ref.
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --allow-git=all
 
       # Guard: package.json version must match the release tag (vX.Y.Z).
       # Skipped on manual workflow_dispatch runs (no tag).
