@@ -213,7 +213,9 @@ export class TestingBotMcpServer {
   // traffic. Throws on any blocking issue so the entry point can exit with a
   // clear error instead of letting the first tool call fail mysteriously.
   public async preflight(): Promise<void> {
-    const required = 18;
+    // Must match `engines.node` in package.json, and the floor enforced by
+    // @testingbot/automation-mcp, which hard-fails its own preflight below 20.
+    const required = 20;
     const major = Number(process.versions.node.split(".")[0]);
     if (!Number.isFinite(major) || major < required) {
       throw new Error(

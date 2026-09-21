@@ -30,7 +30,7 @@ After install, set your credentials from [TestingBot account settings](https://t
 
 ## Prerequisites
 
-- **Node.js** >= 18 (recommended: 22.15.0 or later)
+- **Node.js** >= 20 (recommended: 22.15.0 or later)
 - **TestingBot Account** with API credentials
 - An MCP-compatible client (Claude Desktop, VS Code with Continue, Cursor, etc.)
 
@@ -856,7 +856,7 @@ If you see authentication errors:
 If the MCP server won't connect:
 1. Restart your MCP client (Claude Desktop, VS Code, etc.)
 2. Check the MCP client logs for errors
-3. Verify Node.js version is >= 18
+3. Verify Node.js version is >= 20
 
 ### Tool Execution Errors
 
