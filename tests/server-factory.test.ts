@@ -40,8 +40,16 @@ describe("TestingBotMcpServer.preflight", () => {
   it("rejects unsupported Node versions before hitting the API", async () => {
     setNodeVersion("16.20.0");
     const server = new TestingBotMcpServer(testingBotApiMock, configMock);
-    await expect(server.preflight()).rejects.toThrow(/Node.js 18\+ is required/);
+    await expect(server.preflight()).rejects.toThrow(/Node.js 20\+ is required/);
     expect(testingBotApiMock.getUserInfo).not.toHaveBeenCalled();
+  });
+
+  it("rejects Node 18, which @testingbot/automation-mcp no longer supports", async () => {
+    // The bundled automation tools hard-fail their own preflight below 20, so
+    // accepting 18 here would install cleanly and then die at startup.
+    setNodeVersion("18.20.0");
+    const server = new TestingBotMcpServer(testingBotApiMock, configMock);
+    await expect(server.preflight()).rejects.toThrow(/Node.js 20\+ is required/);
   });
 
   it("starts in degraded mode (no throw) when api_key is missing", async () => {
