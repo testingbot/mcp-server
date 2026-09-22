@@ -223,6 +223,18 @@ describe("Project Tools", () => {
       expect(result.content[0].text).toContain("TESTINGBOT_SECRET");
     });
 
+    it("names the OS capability `platform`, the only key the hub reads", async () => {
+      writeFile("package.json", JSON.stringify({ devDependencies: { "@playwright/test": "^1" } }));
+
+      const tools = addProjectTools(serverMock, testingBotApiMock, configMock);
+      const result = await tools.setupTestingBot.handler({ projectRoot: tmpDir });
+
+      // The hub only maps `platform`/`platformName` onto the session platform; an
+      // `os` key is silently dropped and the session lands on the default OS.
+      expect(result.content[0].text).toContain("platform: 'WIN11'");
+      expect(result.content[0].text).not.toContain("os: 'WIN11'");
+    });
+
     it("returns a WebdriverIO config + install command", async () => {
       writeFile(
         "package.json",
