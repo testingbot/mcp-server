@@ -395,7 +395,7 @@ function configSnippet(framework: Framework, language: Language): string {
       "  secret: process.env.TESTINGBOT_SECRET!,",
       "  browserName: 'chrome',",
       "  browserVersion: 'latest',",
-      "  os: 'WIN11',",
+      "  platform: 'WIN11',",
       "}).toString();",
       "",
       "export default defineConfig({",
