@@ -1,5 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import addLiveTools from "../../src/tools/live.js";
+import addLiveTools, { desktopPlatformCode } from "../../src/tools/live.js";
+
+// A slice of the /v1/browsers catalog: emulators/simulators carry deviceName.
+const CATALOG = [
+  { name: "googlechrome", platform: "WIN11", browser_id: 1, version: "140" },
+  { name: "safari", platform: "VENTURA", platformName: "iOS", deviceName: "iPhone 14", browser_id: 100, version: "16.0" },
+  { name: "safari", platform: "VENTURA", platformName: "iOS", deviceName: "iPhone 14 Pro", browser_id: 101, version: "16.0" },
+  { name: "safari", platform: "VENTURA", platformName: "iOS", deviceName: "iPhone 13 Pro Max", browser_id: 102, version: "15.0" },
+  { name: "safari", platform: "SONOMA", platformName: "iOS", deviceName: "iPhone 16", browser_id: 103, version: "18.0" },
+  { name: "safari", platform: "SONOMA", platformName: "iOS", deviceName: "iPhone 16", browser_id: 104, version: "18.3" },
+  { name: "chrome", platform: "ANDROID", platformName: "Android", deviceName: "Galaxy S23", browser_id: 200, version: "13.0" },
+  { name: "browser", platform: "ANDROID", platformName: "Android", deviceName: "Galaxy S23 Ultra", browser_id: 201, version: "13.0" },
+  { name: "chrome", platform: "ANDROID", platformName: "Android", deviceName: "Galaxy S23 Ultra", browser_id: 202, version: "13.0" },
+  { name: "chrome", platform: "REAL_ANDROID", platformName: "Android", deviceName: "Galaxy A55", browser_id: 300, version: "14.0" },
+];
 
 describe("Live Tools", () => {
   let serverMock: any;
@@ -15,7 +29,7 @@ describe("Live Tools", () => {
       }),
     };
 
-    testingBotApiMock = {};
+    testingBotApiMock = { getBrowsers: vi.fn().mockResolvedValue(CATALOG) };
 
     configMock = {
       "testingbot-key": "test-key",
@@ -66,7 +80,7 @@ describe("Live Tools", () => {
       expect(result.content[0].text).toContain("ios");
     });
 
-    it("should construct correct environment ID for desktop", async () => {
+    it("links desktop sessions by browserName, version and platform", async () => {
       const tools = addLiveTools(serverMock, testingBotApiMock, configMock);
 
       const result = await tools.startLiveSession.handler({
@@ -78,10 +92,33 @@ describe("Live Tools", () => {
         desiredBrowserVersion: "16",
       });
 
-      expect(result.content[0].text).toContain("browser=safari_16_mac_Monterey");
+      const text = result.content[0].text;
+      expect(text).toContain(
+        "https://testingbot.com/members/manual/start?url=https%3A%2F%2Fexample.com&browserName=safari&version=16&platform=MONTEREY"
+      );
+      expect(testingBotApiMock.getBrowsers).not.toHaveBeenCalled();
     });
 
-    it("should construct correct environment ID for mobile", async () => {
+    it("maps edge and ie to the catalog names", async () => {
+      const tools = addLiveTools(serverMock, testingBotApiMock, configMock);
+      const edge = await tools.startDesktopLiveSession.handler({
+        desiredURL: "https://example.com",
+        desiredOS: "Windows",
+        desiredOSVersion: "10",
+        desiredBrowser: "edge",
+      });
+      expect(edge.content[0].text).toContain("browserName=microsoftedge&version=latest&platform=WIN10");
+      const ie = await tools.startDesktopLiveSession.handler({
+        desiredURL: "https://example.com",
+        desiredOS: "Windows",
+        desiredOSVersion: "10",
+        desiredBrowser: "ie",
+        desiredBrowserVersion: "11",
+      });
+      expect(ie.content[0].text).toContain("browserName=iexplore&version=11");
+    });
+
+    it("links mobile sessions by the emulator's browser id", async () => {
       const tools = addLiveTools(serverMock, testingBotApiMock, configMock);
 
       const result = await tools.startLiveSession.handler({
@@ -92,7 +129,37 @@ describe("Live Tools", () => {
         desiredDevice: "Galaxy S23",
       });
 
-      expect(result.content[0].text).toContain("browser=android_13.0_Galaxy_S23");
+      expect(result.content[0].text).toContain("manual/start?url=https%3A%2F%2Fexample.com&browser=200");
+    });
+
+    it("reports a mobile device the catalog does not have", async () => {
+      const tools = addLiveTools(serverMock, testingBotApiMock, configMock);
+
+      const result = await tools.startLiveSession.handler({
+        platformType: "mobile",
+        desiredURL: "https://example.com",
+        desiredOS: "ios",
+        desiredOSVersion: "17.0",
+        desiredDevice: "iPhone 16",
+      });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain("Available versions");
+      expect(result.content[0].text).toContain("18.0, 18.3");
+    });
+
+    it("does not link real devices", async () => {
+      const tools = addLiveTools(serverMock, testingBotApiMock, configMock);
+
+      const result = await tools.startMobileLiveSession.handler({
+        desiredURL: "https://example.com",
+        desiredOS: "android",
+        desiredOSVersion: "14",
+        desiredDevice: "Galaxy A55",
+      });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain("real devices");
     });
 
     it("should handle invalid URL", async () => {
@@ -202,21 +269,37 @@ describe("Live Tools", () => {
       expect(result.content[0].text).toContain("android 13.0");
     });
 
-    it("should handle device names with spaces", async () => {
+    it("matches exact device names before partial ones and prefers the platform browser", async () => {
       const tools = addLiveTools(serverMock, testingBotApiMock, configMock);
 
+      const pro = await tools.startMobileLiveSession.handler({
+        desiredURL: "https://example.com",
+        desiredOS: "ios",
+        desiredOSVersion: "16",
+        desiredDevice: "iphone 14",
+      });
+      expect(pro.content[0].text).toContain("browser=100");
+
+      const ultra = await tools.startMobileLiveSession.handler({
+        desiredURL: "https://example.com",
+        desiredOS: "android",
+        desiredOSVersion: "13",
+        desiredDevice: "Galaxy S23 Ultra",
+      });
+      expect(ultra.content[0].text).toContain("browser=202");
+    });
+
+    it("picks the newest matching version", async () => {
+      const tools = addLiveTools(serverMock, testingBotApiMock, configMock);
       const result = await tools.startMobileLiveSession.handler({
         desiredURL: "https://example.com",
         desiredOS: "ios",
-        desiredOSVersion: "15.0",
-        desiredDevice: "iPhone 13 Pro Max",
+        desiredOSVersion: "18",
+        desiredDevice: "iPhone 16",
       });
-
-      expect(result.content[0].text).toContain("browser=ios_15.0_iPhone_13_Pro_Max");
+      expect(result.content[0].text).toContain("browser=104");
     });
-  });
 
-  describe("Error handling", () => {
     it("should handle errors gracefully", async () => {
       const tools = addLiveTools(serverMock, testingBotApiMock, configMock);
 
@@ -227,6 +310,33 @@ describe("Live Tools", () => {
 
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain("Failed to start live session");
+    });
+  });
+
+  describe("desktopPlatformCode", () => {
+    it.each([
+      ["Windows", "11", "WIN11"],
+      ["Windows", "10", "WIN10"],
+      ["Windows", "8.1", "WIN8_1"],
+      ["Windows", "Windows 11", "WIN11"],
+      ["Mac", "Sonoma", "SONOMA"],
+      ["Mac", "macOS Sequoia", "SEQUOIA"],
+      ["Mac", "Big Sur", "BIGSUR"],
+      ["Mac", "High Sierra", "HIGH-SIERRA"],
+      ["Mac", "14", "SONOMA"],
+      ["Mac", "14.5", "SONOMA"],
+      ["Mac", "10.15", "CATALINA"],
+      ["Mac", "26", "TAHOE"],
+      ["Mac", "ventura", "VENTURA"],
+      ["Linux", "anything", "LINUX"],
+      ["Windows", "win11", "WIN11"],
+    ])("%s %s → %s", (os, version, code) => {
+      expect(desktopPlatformCode(os, version)).toBe(code);
+    });
+
+    it("rejects unknown versions", () => {
+      expect(() => desktopPlatformCode("Windows", "7")).toThrow(/Unknown Windows version/);
+      expect(() => desktopPlatformCode("Mac", "Leopard")).toThrow(/Unknown macOS version/);
     });
   });
 });
