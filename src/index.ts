@@ -4,6 +4,10 @@
 // would otherwise log to stdout and corrupt the stdio JSON-RPC stream. See the
 // module for why a plain top-level assignment here is too late (ESM hoisting).
 import "./silence-wdio.js";
+// Also before anything else: stdout carries the JSON-RPC stream, so any library
+// that calls console.log (the tunnel launcher does, e.g. "Tunnel is ready") would
+// corrupt it. Send console output to stderr instead.
+import "./console-to-stderr.js";
 
 import { getConfig } from "./config.js";
 import { TestingBotMcpServer } from "./server-factory.js";

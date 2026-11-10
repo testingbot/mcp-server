@@ -26,7 +26,7 @@ After install, set your credentials from [TestingBot account settings](https://t
 - 👤 **User Account** - View and update account information
 - 👥 **Team Management** - Manage team settings and team members
 - 🔌 **Chrome DevTools Protocol** - Create CDP sessions for advanced browser automation
-- 🚇 **Tunnel Management** - Manage TestingBot tunnels for local testing
+- 🚇 **Tunnel Management** - Start, stop and manage TestingBot tunnels to test localhost and private sites
 
 ## Prerequisites
 
@@ -585,8 +585,29 @@ Create a Chrome DevTools Protocol session for advanced browser automation. Retur
 
 ### Tunnel Management
 
+TestingBot's browsers and devices run in the cloud. To test `localhost`, private IPs or intranet sites, they need a [TestingBot Tunnel](https://testingbot.com/support/tunnel) running on your machine. These tools can start one for you.
+
+#### `startTunnel`
+Starts a TestingBot Tunnel on the machine running the MCP server and waits until it is ready. Returns the tunnel's identifier and numeric ID. The tunnel stops with `stopTunnel` or when the MCP server exits. On first use the tunnel is downloaded, and it needs **Java 17 or newer**.
+
+**Parameters:**
+- `tunnelIdentifier` (optional): Name for the tunnel. If you don't give one, a unique one is generated.
+- `shared` (optional): Share the tunnel with your team
+- `noBump` (optional): Do not re-sign HTTPS traffic (for certificate pinning or client certificates)
+- `noCache` (optional): Disable caching in the tunnel
+
+**Example prompt:**
+> "Start a tunnel and open http://localhost:3000 in Chrome on Windows 11"
+
+#### `stopTunnel`
+Stops a tunnel started with `startTunnel`.
+
+**Parameters:**
+- `tunnelIdentifier` (optional): The tunnel to stop. Can be left out when only one tunnel is running.
+- `all` (optional): Stop every tunnel this server started
+
 #### `getTunnelList`
-Get a list of all active TestingBot tunnels. Tunnels allow testing websites behind firewalls or on your local machine.
+Get a list of all active TestingBot tunnels on your account, with their identifiers. Tunnels allow testing websites behind firewalls or on your local machine.
 
 **Example prompt:**
 > "Show me all active tunnels"
@@ -668,6 +689,12 @@ Assistant: [Lists all users in the team]
 
 User: "Show me all active tunnels"
 Assistant: [Lists active TestingBot tunnels]
+
+User: "Start a tunnel and check that http://localhost:3000 loads in Safari on macOS"
+Assistant: [Starts a tunnel, opens Safari with that tunnel, loads the page]
+
+User: "Stop the tunnel"
+Assistant: [Stops the tunnel it started]
 ```
 
 ### Example 6: CDP Automation
