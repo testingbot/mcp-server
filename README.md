@@ -188,13 +188,13 @@ The agent will call `tb_openBrowser`, `tb_navigate`, `tb_snapshot`, `tb_click` â
 ### Live Testing
 
 #### `startLiveSession`
-Start an interactive live testing session on TestingBot. Opens a real browser or mobile device for manual testing.
+Start an interactive live testing session on TestingBot. Returns a link that opens the session in your TestingBot dashboard, where you confirm it with Start. Mobile sessions run on emulators/simulators; real-device live sessions are started from the dashboard.
 
 **Parameters:**
 - `platformType`: "desktop" or "mobile"
 - `desiredURL`: The URL to open
 - `desiredOS`: Operating system (Windows, Mac, Linux for desktop; android, ios for mobile)
-- `desiredOSVersion`: OS version
+- `desiredOSVersion`: OS version: Windows `11`/`10`/`8.1`/`8`; macOS by name (`Sonoma`) or number (`14`); or a platform code like `WIN11`
 - `desiredBrowser` (desktop only): Browser name (chrome, firefox, safari, edge, ie)
 - `desiredBrowserVersion` (desktop only): Browser version or "latest"
 - `desiredDevice` (mobile only): Device name (e.g., "iPhone 14", "Galaxy S23")

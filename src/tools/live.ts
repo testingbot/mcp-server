@@ -35,60 +35,202 @@ type DesktopLiveArgs = z.infer<z.ZodObject<typeof DesktopLiveArgsShape>>;
 type MobileLiveArgs = z.infer<z.ZodObject<typeof MobileLiveArgsShape>>;
 type LiveArgs = DesktopLiveArgs | MobileLiveArgs;
 
+const LIVE_START_URL = "https://testingbot.com/members/manual/start";
+
+// Browser names as the TestingBot catalog / capability resolver knows them.
+// "chrome" is resolved server-side to both chrome and googlechrome.
+const BROWSER_NAMES: Record<string, string> = {
+  chrome: "chrome",
+  firefox: "firefox",
+  safari: "safari",
+  edge: "microsoftedge",
+  ie: "iexplore",
+};
+
+// macOS: marketing names and major versions → TestingBot platform codes.
+const MAC_PLATFORMS: Record<string, string> = {
+  tahoe: "TAHOE",
+  "26": "TAHOE",
+  sequoia: "SEQUOIA",
+  "15": "SEQUOIA",
+  sonoma: "SONOMA",
+  "14": "SONOMA",
+  ventura: "VENTURA",
+  "13": "VENTURA",
+  monterey: "MONTEREY",
+  "12": "MONTEREY",
+  bigsur: "BIGSUR",
+  "11": "BIGSUR",
+  catalina: "CATALINA",
+  "10.15": "CATALINA",
+  mojave: "MOJAVE",
+  "10.14": "MOJAVE",
+  highsierra: "HIGH-SIERRA",
+  "10.13": "HIGH-SIERRA",
+};
+
+const WINDOWS_PLATFORMS: Record<string, string> = {
+  "11": "WIN11",
+  "10": "WIN10",
+  "8.1": "WIN8_1",
+  "8": "WIN8",
+  vista: "VISTA",
+};
+
+const KNOWN_PLATFORM_CODES = new Set([
+  ...Object.values(MAC_PLATFORMS),
+  ...Object.values(WINDOWS_PLATFORMS),
+  "LINUX",
+]);
+
 /**
- * Construct environment ID for TestingBot based on browser/device configuration
+ * Map an OS + version as a user says it ("Windows" "11", "Mac" "Sonoma",
+ * "Mac" "14") to the TestingBot platform code the live launcher expects.
  */
-function constructEnvironmentId(args: LiveArgs): string {
-  if (args.platformType === PlatformType.Desktop) {
-    const desktopArgs = args as DesktopLiveArgs;
-    const os = desktopArgs.desiredOS.toLowerCase();
-    const osVersion = desktopArgs.desiredOSVersion;
-    const browser = desktopArgs.desiredBrowser.toLowerCase();
-    const browserVersion = desktopArgs.desiredBrowserVersion || "latest";
+export function desktopPlatformCode(os: string, osVersion: string): string {
+  const version = osVersion.trim();
+  // Already a platform code, e.g. "WIN11" or "SONOMA".
+  if (KNOWN_PLATFORM_CODES.has(version.toUpperCase())) return version.toUpperCase();
 
-    // Format: browser_version_os_osVersion
-    // Example: chrome_120_windows_11
-    return `${browser}_${browserVersion}_${os}_${osVersion.replace(/\s+/g, "_")}`;
-  } else {
-    const mobileArgs = args as MobileLiveArgs;
-    const platform = mobileArgs.desiredOS.toLowerCase();
-    const platformVersion = mobileArgs.desiredOSVersion;
-    const device = mobileArgs.desiredDevice.replace(/\s+/g, "_");
+  const key = version
+    .toLowerCase()
+    .replace(/^(macos|mac os x|mac os|os x|windows|win)\s*/, "")
+    .replace(/[\s_-]+/g, "");
+  const family = os.toLowerCase();
 
-    // Format: platform_platformVersion_device
-    // Example: ios_16.0_iPhone_14
-    return `${platform}_${platformVersion}_${device}`;
+  if (family === "linux") return "LINUX";
+  if (family === "windows") {
+    const code = WINDOWS_PLATFORMS[key];
+    if (code) return code;
+    throw new Error(
+      `Unknown Windows version "${osVersion}". Use one of: 11, 10, 8.1, 8 (or a platform code such as WIN11).`
+    );
   }
+  if (family === "mac") {
+    const code = MAC_PLATFORMS[key] ?? MAC_PLATFORMS[key.split(".")[0]];
+    if (code) return code;
+    throw new Error(
+      `Unknown macOS version "${osVersion}". Use a name (Tahoe, Sequoia, Sonoma, Ventura, Monterey, Big Sur, Catalina, Mojave, High Sierra), a version number, or a platform code such as SONOMA.`
+    );
+  }
+  throw new Error(`Unknown desktop OS "${os}". Use Windows, Mac or Linux.`);
 }
 
-async function startLiveSession(args: LiveArgs, _config: TestingBotConfig): Promise<string> {
-  const url = args.desiredURL;
+interface CatalogEntry {
+  name?: string;
+  platform?: string;
+  platformName?: string;
+  deviceName?: string;
+  version?: string;
+  browser_id?: number;
+}
 
-  if (!validateUrl(url)) {
+function compareVersions(a = "", b = ""): number {
+  const pa = a.split(".").map(Number);
+  const pb = b.split(".").map(Number);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const d = (pa[i] || 0) - (pb[i] || 0);
+    if (d !== 0) return d;
+  }
+  return 0;
+}
+
+/**
+ * Find the emulator/simulator in TestingBot's browser catalog for a mobile live
+ * session. The live launcher only takes its numeric browser_id.
+ */
+async function resolveMobileBrowserId(testingBotApi: any, args: MobileLiveArgs): Promise<number> {
+  const catalog: CatalogEntry[] = await testingBotApi.getBrowsers();
+  const os = args.desiredOS.toLowerCase();
+  const wantedDevice = args.desiredDevice.trim().toLowerCase();
+  const wantedVersion = args.desiredOSVersion.trim();
+
+  const candidates = (Array.isArray(catalog) ? catalog : []).filter(
+    (b) =>
+      b.deviceName &&
+      b.browser_id &&
+      (b.platformName ?? "").toLowerCase() === os &&
+      // Real devices are not opened through this link.
+      !(b.platform ?? "").startsWith("REAL_")
+  );
+
+  const versionMatches = (v = "") =>
+    v === wantedVersion ||
+    v.startsWith(`${wantedVersion}.`) ||
+    // "16.0" asked, "16" listed (or the reverse)
+    compareVersions(v, wantedVersion) === 0;
+
+  const byName = (exact: boolean) =>
+    candidates.filter((b) => {
+      const name = (b.deviceName as string).toLowerCase();
+      return exact ? name === wantedDevice : name.includes(wantedDevice);
+    });
+
+  // Prefer the platform's own browser: Chrome on Android, Safari on iOS.
+  const preferred = os === "android" ? "chrome" : "safari";
+  const pick = (list: CatalogEntry[]) =>
+    list
+      .filter((b) => versionMatches(b.version))
+      .sort(
+        (a, b) =>
+          Number(b.name === preferred) - Number(a.name === preferred) ||
+          compareVersions(b.version, a.version)
+      )[0];
+
+  const match = pick(byName(true)) ?? pick(byName(false));
+  if (match?.browser_id) return match.browser_id;
+
+  const sameDevice = byName(false);
+  const hint = sameDevice.length
+    ? `Available versions for "${args.desiredDevice}": ${[...new Set(sameDevice.map((b) => b.version))].sort(compareVersions).join(", ")}.`
+    : `Use getBrowsers with type "mobile" to see the available ${args.desiredOS === "ios" ? "iOS simulators" : "Android emulators"}.`;
+  throw new Error(
+    `No ${args.desiredOS} emulator/simulator matches "${args.desiredDevice}" on version ${args.desiredOSVersion}. ${hint} (Live sessions on real devices are started from the TestingBot dashboard.)`
+  );
+}
+
+/**
+ * Build the live-session launch link. It opens a confirm page in the user's
+ * signed-in TestingBot dashboard; the session starts when they press Start.
+ * The launcher takes either a numeric browser id or browserName + version +
+ * platform (resolved the same way as Selenium capabilities).
+ */
+async function buildLiveSessionUrl(args: LiveArgs, testingBotApi: any): Promise<string> {
+  if (!validateUrl(args.desiredURL)) {
     throw new Error("Invalid URL provided");
   }
 
-  const environmentId = constructEnvironmentId(args);
-  const sessionUrl = `https://testingbot.com/members/manual/start?browser=${environmentId}&url=${encodeURIComponent(url)}`;
+  const params = new URLSearchParams({ url: args.desiredURL });
 
-  logger.info(
-    {
-      platformType: args.platformType,
-      environmentId,
-      url,
-    },
-    "Starting live session"
-  );
+  if (args.platformType === PlatformType.Desktop) {
+    const desktopArgs = args as DesktopLiveArgs;
+    params.set(
+      "browserName",
+      BROWSER_NAMES[desktopArgs.desiredBrowser.toLowerCase()] ?? desktopArgs.desiredBrowser
+    );
+    params.set("version", desktopArgs.desiredBrowserVersion || "latest");
+    params.set(
+      "platform",
+      desktopPlatformCode(desktopArgs.desiredOS, desktopArgs.desiredOSVersion)
+    );
+  } else {
+    params.set(
+      "browser",
+      String(await resolveMobileBrowserId(testingBotApi, args as MobileLiveArgs))
+    );
+  }
 
+  const sessionUrl = `${LIVE_START_URL}?${params.toString()}`;
+  logger.info({ platformType: args.platformType, sessionUrl }, "Starting live session");
   return sessionUrl;
 }
 
-export default function addLiveTools(server: any, testingBotApi: any, config: TestingBotConfig) {
+export default function addLiveTools(server: any, testingBotApi: any, _config: TestingBotConfig) {
   const tools: Record<string, any> = {};
 
   tools.startLiveSession = server.tool(
     "startLiveSession",
-    "Start an interactive live testing session on TestingBot. Opens a real browser or mobile device for manual testing. Supports both desktop browsers (Chrome, Firefox, Safari, Edge, IE) and mobile devices (iOS, Android).",
+    "Start an interactive live testing session on TestingBot. Returns a link that opens the session in the user's TestingBot dashboard (they confirm with Start). Supports desktop browsers (Chrome, Firefox, Safari, Edge, IE) and mobile emulators/simulators (Android, iOS).",
     {
       platformType: z
         .enum([PlatformType.Desktop, PlatformType.Mobile])
@@ -130,7 +272,7 @@ export default function addLiveTools(server: any, testingBotApi: any, config: Te
           throw new Error("Invalid platformType. Must be 'desktop' or 'mobile'");
         }
 
-        const sessionUrl = await startLiveSession(validatedArgs, config);
+        const sessionUrl = await buildLiveSessionUrl(validatedArgs, testingBotApi);
 
         let formattedOutput = "## Live Session Ready\n\n";
         formattedOutput += `Your interactive testing session is ready to start!\n\n`;
@@ -155,7 +297,7 @@ export default function addLiveTools(server: any, testingBotApi: any, config: Te
         formattedOutput += `**Instructions:**\n`;
         formattedOutput += `1. Click the URL above or copy it to your browser\n`;
         formattedOutput += `2. Log in to TestingBot if prompted\n`;
-        formattedOutput += `3. The live session will start automatically\n`;
+        formattedOutput += `3. Check the browser/device shown and press Start\n`;
         formattedOutput += `4. Interact with the browser/device in real-time\n`;
 
         return {
@@ -197,7 +339,7 @@ export default function addLiveTools(server: any, testingBotApi: any, config: Te
           platformType: PlatformType.Desktop,
         };
 
-        const sessionUrl = await startLiveSession(fullArgs, config);
+        const sessionUrl = await buildLiveSessionUrl(fullArgs, testingBotApi);
 
         let formattedOutput = "## Desktop Live Session Ready\n\n";
         formattedOutput += `**Session URL**: ${sessionUrl}\n\n`;
@@ -223,7 +365,7 @@ export default function addLiveTools(server: any, testingBotApi: any, config: Te
 
   tools.startMobileLiveSession = server.tool(
     "startMobileLiveSession",
-    "Convenience tool to start a mobile device live testing session. Automatically sets platformType to 'mobile'.",
+    "Convenience tool to start a live testing session on a mobile emulator/simulator. Automatically sets platformType to 'mobile'.",
     {
       desiredURL: z.string().url().describe("The URL to open in the mobile browser"),
       desiredOS: z.enum(["android", "ios"]).describe("Mobile platform (android or ios)"),
@@ -237,7 +379,7 @@ export default function addLiveTools(server: any, testingBotApi: any, config: Te
           platformType: PlatformType.Mobile,
         };
 
-        const sessionUrl = await startLiveSession(fullArgs, config);
+        const sessionUrl = await buildLiveSessionUrl(fullArgs, testingBotApi);
 
         let formattedOutput = "## Mobile Live Session Ready\n\n";
         formattedOutput += `**Session URL**: ${sessionUrl}\n\n`;
