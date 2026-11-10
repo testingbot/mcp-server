@@ -72,9 +72,17 @@ export interface Screenshot {
   [key: string]: any;
 }
 
+// Shape of an entry returned by GET /v1/storage
 export interface StorageFile {
+  id: number;
   app_url: string;
-  name: string;
-  size: number;
-  uploaded_at: string;
+  url?: string;
+  filename: string;
+  type?: string;
+  version?: string;
+  min_device_version?: string | null;
+  sim_only?: boolean | null;
+  state?: string;
+  thumb?: string | null;
+  created_at: string;
 }

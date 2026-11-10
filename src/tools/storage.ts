@@ -183,14 +183,18 @@ export default function addStorageTools(
         const response = await testingBotApi.getStorageFiles(offset, limit);
         const files = response?.data || [];
 
-        let formattedOutput = `## Storage Files (showing ${limit} from offset ${offset})\n\n`;
+        let formattedOutput = `## Storage Files (showing ${files.length} from offset ${offset})\n\n`;
 
         if (files.length > 0) {
+          // GET /v1/storage returns filename/type/version/created_at (no name, size or uploaded_at)
           files.forEach((file: any) => {
-            formattedOutput += `### ${file.name}\n`;
+            formattedOutput += `### ${file.filename || file.app_url}\n`;
             formattedOutput += `- **App URL**: ${file.app_url}\n`;
-            formattedOutput += `- **Size**: ${(file.size / 1024 / 1024).toFixed(2)} MB\n`;
-            formattedOutput += `- **Uploaded**: ${file.uploaded_at}\n`;
+            if (file.type) formattedOutput += `- **Type**: ${file.type}\n`;
+            if (file.version) formattedOutput += `- **Version**: ${file.version}\n`;
+            if (file.sim_only !== undefined && file.sim_only !== null)
+              formattedOutput += `- **Simulator only**: ${file.sim_only ? "yes" : "no"}\n`;
+            formattedOutput += `- **Uploaded**: ${file.created_at}\n`;
             formattedOutput += "\n";
           });
         } else {

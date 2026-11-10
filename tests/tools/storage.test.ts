@@ -154,18 +154,25 @@ describe("Storage Tools", () => {
 
   describe("getStorageFiles", () => {
     it("should list storage files", async () => {
+      // Shape returned by GET /v1/storage
       const mockFiles = [
         {
+          id: 1,
           app_url: "tb://app123",
-          name: "app1.apk",
-          size: 5242880,
-          uploaded_at: "2025-01-01T00:00:00Z",
+          filename: "app1.apk",
+          type: "ANDROID",
+          version: "1.0",
+          sim_only: null,
+          created_at: "2025-01-01T00:00:00Z",
         },
         {
+          id: 2,
           app_url: "tb://app456",
-          name: "app2.ipa",
-          size: 10485760,
-          uploaded_at: "2025-01-02T00:00:00Z",
+          filename: "app2.zip",
+          type: "IOS",
+          version: "2.1",
+          sim_only: true,
+          created_at: "2025-01-02T00:00:00Z",
         },
       ];
 
@@ -175,10 +182,15 @@ describe("Storage Tools", () => {
       const result = await tools.getStorageFiles.handler({ offset: 0, limit: 10 });
 
       expect(testingBotApiMock.getStorageFiles).toHaveBeenCalledWith(0, 10);
-      expect(result.content[0].text).toContain("app1.apk");
-      expect(result.content[0].text).toContain("app2.ipa");
-      expect(result.content[0].text).toContain("5.00 MB");
-      expect(result.content[0].text).toContain("10.00 MB");
+      const text = result.content[0].text;
+      expect(text).toContain("showing 2 from offset 0");
+      expect(text).toContain("### app1.apk");
+      expect(text).toContain("### app2.zip");
+      expect(text).toContain("- **Type**: IOS");
+      expect(text).toContain("- **Simulator only**: yes");
+      expect(text).toContain("- **Uploaded**: 2025-01-02T00:00:00Z");
+      expect(text).not.toContain("undefined");
+      expect(text).not.toContain("NaN");
     });
 
     it("should handle empty storage", async () => {
