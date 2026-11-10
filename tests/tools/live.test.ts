@@ -4,15 +4,78 @@ import addLiveTools, { desktopPlatformCode } from "../../src/tools/live.js";
 // A slice of the /v1/browsers catalog: emulators/simulators carry deviceName.
 const CATALOG = [
   { name: "googlechrome", platform: "WIN11", browser_id: 1, version: "140" },
-  { name: "safari", platform: "VENTURA", platformName: "iOS", deviceName: "iPhone 14", browser_id: 100, version: "16.0" },
-  { name: "safari", platform: "VENTURA", platformName: "iOS", deviceName: "iPhone 14 Pro", browser_id: 101, version: "16.0" },
-  { name: "safari", platform: "VENTURA", platformName: "iOS", deviceName: "iPhone 13 Pro Max", browser_id: 102, version: "15.0" },
-  { name: "safari", platform: "SONOMA", platformName: "iOS", deviceName: "iPhone 16", browser_id: 103, version: "18.0" },
-  { name: "safari", platform: "SONOMA", platformName: "iOS", deviceName: "iPhone 16", browser_id: 104, version: "18.3" },
-  { name: "chrome", platform: "ANDROID", platformName: "Android", deviceName: "Galaxy S23", browser_id: 200, version: "13.0" },
-  { name: "browser", platform: "ANDROID", platformName: "Android", deviceName: "Galaxy S23 Ultra", browser_id: 201, version: "13.0" },
-  { name: "chrome", platform: "ANDROID", platformName: "Android", deviceName: "Galaxy S23 Ultra", browser_id: 202, version: "13.0" },
-  { name: "chrome", platform: "REAL_ANDROID", platformName: "Android", deviceName: "Galaxy A55", browser_id: 300, version: "14.0" },
+  {
+    name: "safari",
+    platform: "VENTURA",
+    platformName: "iOS",
+    deviceName: "iPhone 14",
+    browser_id: 100,
+    version: "16.0",
+  },
+  {
+    name: "safari",
+    platform: "VENTURA",
+    platformName: "iOS",
+    deviceName: "iPhone 14 Pro",
+    browser_id: 101,
+    version: "16.0",
+  },
+  {
+    name: "safari",
+    platform: "VENTURA",
+    platformName: "iOS",
+    deviceName: "iPhone 13 Pro Max",
+    browser_id: 102,
+    version: "15.0",
+  },
+  {
+    name: "safari",
+    platform: "SONOMA",
+    platformName: "iOS",
+    deviceName: "iPhone 16",
+    browser_id: 103,
+    version: "18.0",
+  },
+  {
+    name: "safari",
+    platform: "SONOMA",
+    platformName: "iOS",
+    deviceName: "iPhone 16",
+    browser_id: 104,
+    version: "18.3",
+  },
+  {
+    name: "chrome",
+    platform: "ANDROID",
+    platformName: "Android",
+    deviceName: "Galaxy S23",
+    browser_id: 200,
+    version: "13.0",
+  },
+  {
+    name: "browser",
+    platform: "ANDROID",
+    platformName: "Android",
+    deviceName: "Galaxy S23 Ultra",
+    browser_id: 201,
+    version: "13.0",
+  },
+  {
+    name: "chrome",
+    platform: "ANDROID",
+    platformName: "Android",
+    deviceName: "Galaxy S23 Ultra",
+    browser_id: 202,
+    version: "13.0",
+  },
+  {
+    name: "chrome",
+    platform: "REAL_ANDROID",
+    platformName: "Android",
+    deviceName: "Galaxy A55",
+    browser_id: 300,
+    version: "14.0",
+  },
 ];
 
 describe("Live Tools", () => {
@@ -107,7 +170,9 @@ describe("Live Tools", () => {
         desiredOSVersion: "10",
         desiredBrowser: "edge",
       });
-      expect(edge.content[0].text).toContain("browserName=microsoftedge&version=latest&platform=WIN10");
+      expect(edge.content[0].text).toContain(
+        "browserName=microsoftedge&version=latest&platform=WIN10"
+      );
       const ie = await tools.startDesktopLiveSession.handler({
         desiredURL: "https://example.com",
         desiredOS: "Windows",
@@ -129,7 +194,9 @@ describe("Live Tools", () => {
         desiredDevice: "Galaxy S23",
       });
 
-      expect(result.content[0].text).toContain("manual/start?url=https%3A%2F%2Fexample.com&browser=200");
+      expect(result.content[0].text).toContain(
+        "manual/start?url=https%3A%2F%2Fexample.com&browser=200"
+      );
     });
 
     it("reports a mobile device the catalog does not have", async () => {
@@ -188,7 +255,9 @@ describe("Live Tools", () => {
         desiredBrowserVersion: "latest",
       });
 
-      expect(result.content[0].text).toContain("url=https%3A%2F%2Fexample.com%2Fpath%3Fquery%3Dvalue%26other%3Dtest");
+      expect(result.content[0].text).toContain(
+        "url=https%3A%2F%2Fexample.com%2Fpath%3Fquery%3Dvalue%26other%3Dtest"
+      );
     });
   });
 
@@ -337,6 +406,78 @@ describe("Live Tools", () => {
     it("rejects unknown versions", () => {
       expect(() => desktopPlatformCode("Windows", "7")).toThrow(/Unknown Windows version/);
       expect(() => desktopPlatformCode("Mac", "Leopard")).toThrow(/Unknown macOS version/);
+    });
+  });
+
+  describe("tunnels", () => {
+    const desktop = {
+      platformType: "desktop",
+      desiredURL: "http://localhost:3000",
+      desiredOS: "Windows",
+      desiredOSVersion: "11",
+      desiredBrowser: "chrome",
+    };
+
+    it("adds the tunnel to the session URL", async () => {
+      const tools = addLiveTools(serverMock, testingBotApiMock, configMock);
+      const result = await tools.startLiveSession.handler({ ...desktop, tunnelId: 265572 });
+      const text = result.content[0].text;
+      expect(text).toContain("&tunnel=265572");
+      expect(text).toContain("Tunnel: 265572");
+      expect(text).not.toContain("startTunnel");
+    });
+
+    it("accepts the tunnel ID as a string", async () => {
+      const tools = addLiveTools(serverMock, testingBotApiMock, configMock);
+      const result = await tools.startDesktopLiveSession.handler({
+        desiredURL: "http://localhost:3000",
+        desiredOS: "Windows",
+        desiredOSVersion: "11",
+        desiredBrowser: "chrome",
+        tunnelId: "42",
+      });
+      expect(result.content[0].text).toContain("&tunnel=42");
+    });
+
+    it("adds the tunnel to mobile session URLs", async () => {
+      const tools = addLiveTools(serverMock, testingBotApiMock, configMock);
+      const result = await tools.startMobileLiveSession.handler({
+        desiredURL: "http://localhost:3000",
+        desiredOS: "android",
+        desiredOSVersion: "13.0",
+        desiredDevice: "Galaxy S23",
+        tunnelId: 7,
+      });
+      expect(result.content[0].text).toContain("browser=200&tunnel=7");
+    });
+
+    it("warns when a local URL is opened without a tunnel", async () => {
+      const tools = addLiveTools(serverMock, testingBotApiMock, configMock);
+      const result = await tools.startLiveSession.handler(desktop);
+      const text = result.content[0].text;
+      expect(text).not.toContain("&tunnel=");
+      expect(text).toContain("startTunnel");
+      expect(text).toContain("tunnelId");
+    });
+
+    it("warns on mobile sessions too", async () => {
+      const tools = addLiveTools(serverMock, testingBotApiMock, configMock);
+      const result = await tools.startMobileLiveSession.handler({
+        desiredURL: "http://192.168.1.20",
+        desiredOS: "android",
+        desiredOSVersion: "13.0",
+        desiredDevice: "Galaxy S23",
+      });
+      expect(result.content[0].text).toContain("startTunnel");
+    });
+
+    it("does not warn for public URLs", async () => {
+      const tools = addLiveTools(serverMock, testingBotApiMock, configMock);
+      const result = await tools.startLiveSession.handler({
+        ...desktop,
+        desiredURL: "https://example.com",
+      });
+      expect(result.content[0].text).not.toContain("startTunnel");
     });
   });
 });

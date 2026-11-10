@@ -181,6 +181,30 @@ describe("Maestro Tools", () => {
       expect(runBody.otherApps).toEqual(["tb://abc123", "https://example.com/helper.apk"]);
     });
 
+    it("routes the run through a named tunnel", async () => {
+      fetchMock.mockResolvedValueOnce(jsonResponse({ success: true, id: 42, runs: [{ id: 105 }] }));
+
+      const tools = addMaestroTools(serverMock, {}, configMock);
+      await tools.runMaestroTest.handler({
+        projectId: 42,
+        platformName: "Android",
+        tunnelIdentifier: " mcp-dev ",
+      });
+
+      const runBody = JSON.parse(fetchMock.mock.calls[0][1].body);
+      expect(runBody.capabilities[0].tunnelIdentifier).toBe("mcp-dev");
+    });
+
+    it("sends no tunnelIdentifier when none is given", async () => {
+      fetchMock.mockResolvedValueOnce(jsonResponse({ success: true, id: 42, runs: [{ id: 106 }] }));
+
+      const tools = addMaestroTools(serverMock, {}, configMock);
+      await tools.runMaestroTest.handler({ projectId: 42, platformName: "Android" });
+
+      const runBody = JSON.parse(fetchMock.mock.calls[0][1].body);
+      expect(runBody.capabilities[0]).not.toHaveProperty("tunnelIdentifier");
+    });
+
     it("surfaces API errors returned in a 200 body", async () => {
       fetchMock.mockResolvedValueOnce(jsonResponse({ success: false, errors: ["No devices available"] }));
 

@@ -147,4 +147,46 @@ describe("Screenshot Tools", () => {
       expect(result.isError).toBe(true);
     });
   });
+
+  describe("takeScreenshot of local URLs", () => {
+    const localArgs = {
+      url: "http://localhost:3000",
+      browsers: [{ browserName: "chrome", version: "latest", os: "WIN11" }],
+      resolution: "1920x1080",
+    };
+
+    it("refuses when no tunnel is running", async () => {
+      testingBotApiMock.getTunnelList = vi.fn().mockResolvedValue([]);
+      const tools = addScreenshotTools(serverMock, testingBotApiMock, configMock);
+      const result = await tools.takeScreenshot.handler(localArgs);
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain("startTunnel");
+      expect(testingBotApiMock.takeScreenshot).not.toHaveBeenCalled();
+    });
+
+    it("takes the screenshots when a tunnel is running", async () => {
+      testingBotApiMock.getTunnelList = vi.fn().mockResolvedValue([{ id: 1, state: "READY" }]);
+      testingBotApiMock.takeScreenshot.mockResolvedValue({ id: "shot-local" });
+      const tools = addScreenshotTools(serverMock, testingBotApiMock, configMock);
+      const result = await tools.takeScreenshot.handler(localArgs);
+      expect(result.isError).toBeUndefined();
+      expect(testingBotApiMock.takeScreenshot).toHaveBeenCalled();
+    });
+
+    it("does not block when the tunnel check fails", async () => {
+      testingBotApiMock.getTunnelList = vi.fn().mockRejectedValue(new Error("down"));
+      testingBotApiMock.takeScreenshot.mockResolvedValue({ id: "shot-local" });
+      const tools = addScreenshotTools(serverMock, testingBotApiMock, configMock);
+      await tools.takeScreenshot.handler(localArgs);
+      expect(testingBotApiMock.takeScreenshot).toHaveBeenCalled();
+    });
+
+    it("does not check tunnels for public URLs", async () => {
+      testingBotApiMock.getTunnelList = vi.fn();
+      testingBotApiMock.takeScreenshot.mockResolvedValue({ id: "shot-public" });
+      const tools = addScreenshotTools(serverMock, testingBotApiMock, configMock);
+      await tools.takeScreenshot.handler({ ...localArgs, url: "https://example.com" });
+      expect(testingBotApiMock.getTunnelList).not.toHaveBeenCalled();
+    });
+  });
 });
