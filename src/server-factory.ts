@@ -4,6 +4,8 @@ import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprot
 import { TestingBotConfig } from "./lib/types.js";
 import logger from "./lib/logger.js";
 import { createRequire } from "module";
+import { z } from "zod";
+import { zodToJsonSchema } from "zod-to-json-schema";
 
 const require = createRequire(import.meta.url);
 const packageJson = require("../package.json");
@@ -58,19 +60,7 @@ export class TestingBotMcpServer {
   private setupHandlers() {
     // Handle tools/list request
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
-      return {
-        tools: Object.values(this.tools).map((tool: any) => ({
-          name: tool.name,
-          description: tool.description,
-          // Proxied tools (e.g. appium-mcp) pre-stash a raw JSON Schema on the
-          // tool object. Honor it; otherwise serialize the Zod-style dict.
-          inputSchema: tool.inputSchema ?? {
-            type: "object",
-            properties: tool.schema,
-            required: Object.keys(tool.schema).filter((key) => !tool.schema[key].isOptional?.()),
-          },
-        })),
-      };
+      return { tools: this.listTools() };
     });
 
     // Handle tools/call request
@@ -82,6 +72,19 @@ export class TestingBotMcpServer {
 
       return this.handleToolCall(toolName, toolArgs);
     });
+  }
+
+  // The tools/list payload. Proxied tools (e.g. appium-mcp) pre-stash a raw
+  // JSON Schema on the tool object; honor it. Local tools carry a dict of Zod
+  // types, which must be converted: putting the Zod objects straight into
+  // `properties` published their internals (`_def`, `~standard`) instead of
+  // JSON Schema, so clients could neither validate nor prompt for arguments.
+  public listTools(): Array<{ name: string; description: string; inputSchema: any }> {
+    return Object.values(this.tools).map((tool: any) => ({
+      name: tool.name,
+      description: tool.description,
+      inputSchema: tool.inputSchema ?? toolInputSchema(tool.schema),
+    }));
   }
 
   // Dispatch a single tool call, applying the degraded-mode credential gate.
@@ -267,4 +270,17 @@ export class TestingBotMcpServer {
       logger.error({ error }, "Error while closing MCP server");
     }
   }
+}
+
+// Converts a tool's Zod shape (`{ arg: z.string(), ... }`) to the JSON Schema
+// object MCP expects as `inputSchema`. Inline everything ($refStrategy none):
+// MCP clients do not resolve $ref, and a reused sub-schema would otherwise be
+// emitted as a reference to a definition that is not part of the payload.
+export function toolInputSchema(shape: Record<string, any> | undefined): any {
+  const converted: any = zodToJsonSchema(z.object(shape ?? {}), {
+    target: "jsonSchema7",
+    $refStrategy: "none",
+  });
+  delete converted.$schema;
+  return converted;
 }
