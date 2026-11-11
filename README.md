@@ -183,6 +183,26 @@ Just ask:
 
 The agent will call `tb_openBrowser`, `tb_navigate`, `tb_snapshot`, `tb_click` — and surface a **live-view URL** so you can watch it in real time. For real iOS / Android devices, the bundled [`appium-mcp`](https://github.com/appium/appium-mcp) child gives the agent the full `appium_*` toolbelt (`appium_session_management`, `appium_gesture`, `appium_set_value`, `appium_screenshot`, ~30 more) — no separate install or config required. Just ask: _"Open an iPhone 15 Pro on iOS 17 on TestingBot, tap the login button, take a screenshot."_ See the [`@testingbot/automation-mcp` README](https://github.com/testingbot/automation-mcp#readme) for the full tool list, caveats (sessions are metered), and configuration options.
 
+## 🚇 Testing localhost and private sites
+
+TestingBot's browsers and devices run in the cloud, so they can't open `localhost`, private IPs (`10.x`, `192.168.x`, …) or intranet hosts directly. To reach them, they need a [TestingBot Tunnel](https://testingbot.com/support/tunnel) running on your machine. Just ask:
+
+> Start a tunnel and open http://localhost:3000 in Chrome on Windows 11.
+
+The agent calls `startTunnel`, which needs **Java 17+**. The tool returns the tunnel's identifier and ID, and the agent passes them on:
+
+| Run | How it uses the tunnel |
+| --- | --- |
+| `tb_openBrowser` (agent-driven browser) | `tunnelIdentifier` (**required**: sessions without it go direct). Or set `TESTINGBOT_TUNNEL_IDENTIFIER` |
+| `appium_session_management` (native apps) | `"tb:options": {"tunnel-identifier": "…"}` in the capabilities |
+| `startLiveSession` / `startDesktopLiveSession` / `startMobileLiveSession` | `tunnelId` (the numeric ID) |
+| `runMaestroTest` | `tunnelIdentifier`. Without it, the account's newest running tunnel is used |
+| `takeScreenshot`, `runAppAutomateTest` (Espresso / XCUITest) | The account's newest running tunnel is used automatically |
+
+**Android apps and flows:** Android never sends `localhost` / `127.0.0.1` through a proxy, so on an Android device or emulator those URLs reach the device itself, not your machine. Use a hostname that resolves to 127.0.0.1 on your side instead, such as `http://myapp.localtest.me:3000`. The tunnel resolves it on your machine.
+
+`stopTunnel` stops the tunnel. Tunnels started by the server are also stopped when the server exits. If you'd rather run the tunnel yourself, start it with `--tunnel-identifier <name>` and give the agent that name.
+
 ## Available Tools
 
 ### Live Testing
@@ -198,6 +218,7 @@ Start an interactive live testing session on TestingBot. Returns a link that ope
 - `desiredBrowser` (desktop only): Browser name (chrome, firefox, safari, edge, ie)
 - `desiredBrowserVersion` (desktop only): Browser version or "latest"
 - `desiredDevice` (mobile only): Device name (e.g., "iPhone 14", "Galaxy S23")
+- `tunnelId` (optional): Numeric ID of a running tunnel, needed for localhost / private URLs (see [Testing localhost and private sites](#-testing-localhost-and-private-sites))
 
 **Example prompts:**
 > "Start a live testing session on Chrome latest with Windows 11 for https://example.com"
@@ -212,6 +233,7 @@ Convenience tool to start a desktop browser live testing session.
 - `desiredOSVersion`: OS version
 - `desiredBrowser`: chrome, firefox, safari, edge, or ie
 - `desiredBrowserVersion` (optional): Browser version or "latest" (default: latest)
+- `tunnelId` (optional): Numeric ID of a running tunnel, for localhost / private URLs
 
 **Example prompt:**
 > "Start desktop live session on Firefox 120 with Mac Monterey for https://example.com"
@@ -224,6 +246,7 @@ Convenience tool to start a mobile device live testing session.
 - `desiredOS`: android or ios
 - `desiredOSVersion`: OS version
 - `desiredDevice`: Device name
+- `tunnelId` (optional): Numeric ID of a running tunnel, for localhost / private URLs
 
 **Example prompt:**
 > "Start mobile live session on Galaxy S23 with Android 13 for https://example.com"
@@ -414,6 +437,7 @@ Start a Maestro run. Returns immediately with the run ID — poll with `getMaest
 - `includeTags` / `excludeTags` (optional): Filter flows by Maestro tags
 - `shardSplit` (optional): Split flows across parallel devices
 - `otherApps` (optional): Up to 4 companion app URLs to install alongside the app
+- `tunnelIdentifier` (optional): Run through this tunnel, so the app can reach localhost / private backends
 
 **Example prompt:**
 > "Run my Maestro flows on a real Pixel 8 with Android 14"
@@ -493,6 +517,8 @@ Take screenshots of a URL across multiple browsers and platforms.
 - `resolution` (optional): Screen resolution (default: "1920x1080")
 - `waitTime` (optional): Seconds to wait before screenshot (default: 5, max: 60)
 - `fullPage` (optional): Capture full page or viewport (default: false)
+
+For a localhost / private URL, the screenshots go through the account's newest running tunnel. If no tunnel is running, the tool says so instead of taking the screenshots.
 
 **Example prompt:**
 > "Take a screenshot of https://example.com on Chrome and Firefox"

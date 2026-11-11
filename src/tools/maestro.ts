@@ -332,6 +332,12 @@ export default function addMaestroTools(
         .describe(
           "Up to 4 companion app URLs (tb:// from uploadMaestroCompanionApp, or http(s)://) installed alongside the app under test"
         ),
+      tunnelIdentifier: z
+        .string()
+        .optional()
+        .describe(
+          "Identifier of a running TestingBot Tunnel (from startTunnel) for the app to reach localhost / private-network backends through. Without it the account's newest running tunnel, if any, is used. On Android, `localhost` / `127.0.0.1` never go through the tunnel: in flows and app config, use a hostname that resolves to 127.0.0.1 on the tunnel's machine instead, e.g. http://myapp.localtest.me:3000."
+        ),
     },
     async (args: {
       projectId: number;
@@ -345,6 +351,7 @@ export default function addMaestroTools(
       excludeTags?: string[];
       shardSplit?: number;
       otherApps?: string[];
+      tunnelIdentifier?: string;
     }) => {
       try {
         const projectId = Number(args.projectId);
@@ -355,6 +362,9 @@ export default function addMaestroTools(
         if (args.version) capabilities.version = args.version;
         if (args.name) capabilities.name = args.name;
         if (args.realDevice) capabilities.realDevice = "true";
+        if (args.tunnelIdentifier?.trim()) {
+          capabilities.tunnelIdentifier = args.tunnelIdentifier.trim();
+        }
 
         const maestroOptions: MaestroRunOptions = {};
         if (args.env && Object.keys(args.env).length > 0) maestroOptions.env = args.env;
