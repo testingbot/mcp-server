@@ -131,7 +131,7 @@ export default function addAppAutomateTools(
 
   tools.runAppAutomateTest = server.tool(
     "runAppAutomateTest",
-    "Start an Espresso or XCUITest run on a TestingBot device. Returns immediately with the run ID — it does NOT wait for completion. Poll with getAppAutomateRunStatus, then fetch getAppAutomateRunResults. If the app needs a localhost / private-network backend, start a tunnel first (startTunnel): the run uses the account's newest running tunnel.",
+    "Start an Espresso or XCUITest run on a TestingBot device. Returns immediately with the run ID — it does NOT wait for completion. Poll with getAppAutomateRunStatus, then fetch getAppAutomateRunResults. If the app needs a localhost / private-network backend, start a tunnel first (startTunnel): the run uses the account's newest running tunnel. On Android, point the app at a hostname that resolves to 127.0.0.1 on the tunnel's machine (e.g. myapp.localtest.me), not localhost, which Android never proxies.",
     {
       framework: frameworkSchema,
       projectId: projectIdSchema.describe("Project ID returned by uploadAppAutomateApp"),

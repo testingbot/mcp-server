@@ -199,6 +199,8 @@ The agent calls `startTunnel`, which needs **Java 17+**. The tool returns the tu
 | `runMaestroTest` | `tunnelIdentifier`. Without it, the account's newest running tunnel is used |
 | `takeScreenshot`, `runAppAutomateTest` (Espresso / XCUITest) | The account's newest running tunnel is used automatically |
 
+**Android apps and flows:** Android never sends `localhost` / `127.0.0.1` through a proxy, so on an Android device or emulator those URLs reach the device itself, not your machine. Use a hostname that resolves to 127.0.0.1 on your side instead, such as `http://myapp.localtest.me:3000`. The tunnel resolves it on your machine.
+
 `stopTunnel` stops the tunnel. Tunnels started by the server are also stopped when the server exits. If you'd rather run the tunnel yourself, start it with `--tunnel-identifier <name>` and give the agent that name.
 
 ## Available Tools
