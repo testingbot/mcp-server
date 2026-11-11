@@ -20,6 +20,7 @@ import addLiveTools from "./tools/live.js";
 import addTeamTools from "./tools/team.js";
 import addCdpTools from "./tools/cdp.js";
 import addTunnelTools from "./tools/tunnels.js";
+import { tunnelManager } from "./lib/tunnel-manager.js";
 import addLogTools from "./tools/logs.js";
 import addProjectTools from "./tools/project.js";
 import addMaestroTools from "./tools/maestro.js";
@@ -265,6 +266,17 @@ export class TestingBotMcpServer {
       if (this.automation) {
         await this.automation.shutdown();
       }
+    } catch (error) {
+      logger.error({ error }, "Error while closing automation sessions");
+    }
+    try {
+      // Tunnels started via startTunnel are local Java processes; stop them so
+      // they don't outlive the server.
+      await tunnelManager.stopAll();
+    } catch (error) {
+      logger.error({ error }, "Error while stopping tunnels");
+    }
+    try {
       await this.server.close();
     } catch (error) {
       logger.error({ error }, "Error while closing MCP server");

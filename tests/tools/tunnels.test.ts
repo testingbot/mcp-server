@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import addTunnelTools from "../../src/tools/tunnels.js";
+import { TunnelManager } from "../../src/lib/tunnel-manager.js";
 
 describe("Tunnel Tools", () => {
   let serverMock: any;
@@ -195,6 +196,116 @@ describe("Tunnel Tools", () => {
         expect(testingBotApiMock.deleteTunnel).toHaveBeenCalledWith(tunnelId);
         expect(result.content[0].text).toContain(`Tunnel ${tunnelId} deleted successfully`);
       }
+    });
+  });
+
+  describe("startTunnel / stopTunnel", () => {
+    function fakeProcess() {
+      return {
+        pid: 1,
+        exitCode: null as number | null,
+        signalCode: null as string | null,
+        close: vi.fn(function (this: any, cb?: () => void) {
+          this.signalCode = "SIGINT";
+          cb?.();
+        }),
+      };
+    }
+
+    function setup(launch: any = vi.fn(async () => fakeProcess())) {
+      const manager = new TunnelManager(async () => ({ downloadAndRunAsync: launch }));
+      const tools = addTunnelTools(serverMock, testingBotApiMock, configMock, manager);
+      return { tools, manager, launch };
+    }
+
+    it("starts a tunnel with the configured credentials and explains how to use it", async () => {
+      testingBotApiMock.getTunnelList.mockResolvedValue([{ id: 77, identifier: "dev" }]);
+      const { tools, launch } = setup();
+
+      const result = await tools.startTunnel.handler({ tunnelIdentifier: "dev" });
+
+      expect(launch).toHaveBeenCalledWith(
+        expect.objectContaining({ apiKey: "test-key", apiSecret: "test-secret", tunnelIdentifier: "dev" })
+      );
+      const text = result.content[0].text;
+      expect(result.isError).toBeUndefined();
+      expect(text).toContain("Tunnel started");
+      expect(text).toContain("`dev`");
+      expect(text).toContain("**Tunnel ID**: 77");
+      expect(text).toContain('tunnelIdentifier: "dev"');
+      expect(text).toContain("tunnelId: 77");
+    });
+
+    it("still succeeds when the tunnel ID lookup fails", async () => {
+      testingBotApiMock.getTunnelList.mockRejectedValue(new Error("down"));
+      const { tools } = setup();
+      const result = await tools.startTunnel.handler({ tunnelIdentifier: "dev" });
+      expect(result.isError).toBeUndefined();
+      expect(result.content[0].text).not.toContain("Tunnel ID");
+    });
+
+    it("reports a running tunnel instead of starting a second one", async () => {
+      testingBotApiMock.getTunnelList.mockResolvedValue([]);
+      const { tools, launch } = setup();
+      await tools.startTunnel.handler({ tunnelIdentifier: "dev" });
+      const result = await tools.startTunnel.handler({ tunnelIdentifier: "dev" });
+      expect(launch).toHaveBeenCalledTimes(1);
+      expect(result.content[0].text).toContain("already running");
+    });
+
+    it("adds a Java hint when the launcher fails on Java", async () => {
+      const { tools } = setup(vi.fn(async () => {
+        throw new Error("Java is not installed");
+      }));
+      const result = await tools.startTunnel.handler({});
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain("Java 17");
+    });
+
+    it("stops the only running tunnel without an identifier", async () => {
+      testingBotApiMock.getTunnelList.mockResolvedValue([]);
+      const { tools, manager } = setup();
+      await tools.startTunnel.handler({ tunnelIdentifier: "only" });
+      const result = await tools.stopTunnel.handler({});
+      expect(result.content[0].text).toContain("Tunnel `only` stopped");
+      expect(manager.list()).toEqual([]);
+    });
+
+    it("asks which tunnel to stop when several run", async () => {
+      testingBotApiMock.getTunnelList.mockResolvedValue([]);
+      const { tools, manager } = setup();
+      await tools.startTunnel.handler({ tunnelIdentifier: "a" });
+      await tools.startTunnel.handler({ tunnelIdentifier: "b" });
+      const result = await tools.stopTunnel.handler({});
+      expect(result.isError).toBe(true);
+      expect(manager.list()).toHaveLength(2);
+
+      const all = await tools.stopTunnel.handler({ all: true });
+      expect(all.content[0].text).toContain("`a` stopped");
+      expect(all.content[0].text).toContain("`b` stopped");
+    });
+
+    it("points to deleteTunnel for tunnels it did not start", async () => {
+      const { tools } = setup();
+      const none = await tools.stopTunnel.handler({});
+      expect(none.content[0].text).toContain("deleteTunnel");
+      const unknown = await tools.stopTunnel.handler({ tunnelIdentifier: "elsewhere" });
+      expect(unknown.content[0].text).toContain("deleteTunnel");
+    });
+
+    it("getTunnelList shows identifiers and marks tunnels started here", async () => {
+      const { tools, manager } = setup();
+      testingBotApiMock.getTunnelList.mockResolvedValue([]);
+      await manager.start({ apiKey: "k", apiSecret: "s", tunnelIdentifier: "mine" });
+      testingBotApiMock.getTunnelList.mockResolvedValue([
+        { id: 1, identifier: "mine", state: "READY" },
+        { id: 2, identifier: "theirs", state: "READY" },
+      ]);
+      const text = (await tools.getTunnelList.handler({})).content[0].text;
+      expect(text).toContain("`mine` (started by this MCP server)");
+      expect(text).toContain("`theirs`");
+      expect(text).not.toContain("`theirs` (started");
+      expect(text).toContain("**Status**: READY");
     });
   });
 });
