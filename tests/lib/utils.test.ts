@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  isPrivateUrl,
   sanitizeSessionId,
   formatError,
   handleMCPError,
@@ -95,5 +96,36 @@ describe("sleep", () => {
     const elapsed = Date.now() - start;
     // Allow a generous lower bound to avoid flakiness on slow CI.
     expect(elapsed).toBeGreaterThanOrEqual(15);
+  });
+
+  describe("isPrivateUrl", () => {
+    it.each([
+      "http://localhost:3000",
+      "http://app.localhost/",
+      "http://127.0.0.1:8080",
+      "http://10.1.2.3",
+      "http://172.16.0.1",
+      "http://172.31.255.255",
+      "http://192.168.1.10/path",
+      "http://169.254.1.1",
+      "http://[::1]:3000",
+      "http://[fd00::1]/",
+      "http://printer.local",
+      "http://api.internal",
+      "http://intranet/",
+    ])("flags %s", (url) => {
+      expect(isPrivateUrl(url)).toBe(true);
+    });
+
+    it.each([
+      "https://example.com",
+      "https://testingbot.com/support",
+      "http://172.32.0.1",
+      "http://8.8.8.8",
+      "http://[2001:db8::1]",
+      "not a url",
+    ])("does not flag %s", (url) => {
+      expect(isPrivateUrl(url)).toBe(false);
+    });
   });
 });

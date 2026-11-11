@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TestingBotConfig } from "../lib/types.js";
-import { handleMCPError, validateUrl } from "../lib/utils.js";
+import { handleMCPError, isPrivateUrl, PRIVATE_URL_HINT, validateUrl } from "../lib/utils.js";
 import logger from "../lib/logger.js";
 
 export default function addScreenshotTools(
@@ -12,7 +12,7 @@ export default function addScreenshotTools(
 
   tools.takeScreenshot = server.tool(
     "takeScreenshot",
-    "Take screenshots of a URL across multiple browsers and platforms. Returns a screenshot ID to retrieve results.",
+    "Take screenshots of a URL across multiple browsers and platforms. Returns a screenshot ID to retrieve results. localhost / private-network URLs are captured through the account's newest running TestingBot Tunnel — start one with startTunnel first.",
     {
       url: z.string().url().describe("The URL to screenshot"),
       browsers: z
@@ -52,6 +52,25 @@ export default function addScreenshotTools(
       try {
         if (!validateUrl(args.url)) {
           throw new Error("Invalid URL provided");
+        }
+
+        // Screenshots of a local URL go through the account's newest running
+        // tunnel. Without one every browser would just render an error page, so
+        // fail early with a hint instead of burning a batch.
+        if (isPrivateUrl(args.url)) {
+          let tunnels: unknown;
+          try {
+            tunnels = await testingBotApi.getTunnelList();
+          } catch (error) {
+            logger.warn({ error }, "Could not check for a running tunnel");
+            tunnels = undefined;
+          }
+          if (Array.isArray(tunnels) && tunnels.length === 0) {
+            return {
+              content: [{ type: "text", text: `No screenshots taken. ${PRIVATE_URL_HINT}` }],
+              isError: true,
+            };
+          }
         }
 
         logger.info({ url: args.url, browsers: args.browsers.length }, "Taking screenshots");

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TestingBotConfig } from "../lib/types.js";
-import { handleMCPError, validateUrl } from "../lib/utils.js";
+import { handleMCPError, isPrivateUrl, PRIVATE_URL_HINT, validateUrl } from "../lib/utils.js";
 import logger from "../lib/logger.js";
 
 enum PlatformType {
@@ -20,6 +20,13 @@ const DesktopLiveArgsShape = {
     .string()
     .optional()
     .describe("Browser version or 'latest' (default: latest)"),
+  tunnelId: z
+    .union([z.number(), z.string().transform(Number)])
+    .pipe(z.number().int().positive())
+    .optional()
+    .describe(
+      "Numeric ID of a running TestingBot Tunnel (from startTunnel or getTunnelList) to route the session through. Needed for localhost / private-network URLs."
+    ),
 };
 
 // Mobile browser live session schema
@@ -29,6 +36,13 @@ const MobileLiveArgsShape = {
   desiredOS: z.enum(["android", "ios"]).describe("Mobile platform (android or ios)"),
   desiredOSVersion: z.string().describe("OS version (e.g., '13.0', '16.0')"),
   desiredDevice: z.string().describe("Device name (e.g., 'iPhone 14', 'Galaxy S23')"),
+  tunnelId: z
+    .union([z.number(), z.string().transform(Number)])
+    .pipe(z.number().int().positive())
+    .optional()
+    .describe(
+      "Numeric ID of a running TestingBot Tunnel (from startTunnel or getTunnelList) to route the session through. Needed for localhost / private-network URLs."
+    ),
 };
 
 type DesktopLiveArgs = z.infer<z.ZodObject<typeof DesktopLiveArgsShape>>;
@@ -220,9 +234,22 @@ async function buildLiveSessionUrl(args: LiveArgs, testingBotApi: any): Promise<
     );
   }
 
+  // The launch page preselects this tunnel; the session then runs through it.
+  if (args.tunnelId) params.set("tunnel", String(args.tunnelId));
+
   const sessionUrl = `${LIVE_START_URL}?${params.toString()}`;
   logger.info({ platformType: args.platformType, sessionUrl }, "Starting live session");
   return sessionUrl;
+}
+
+// Tunnel line for the session summary, plus a warning when a local URL is opened
+// without one (it would fail to load in the cloud browser).
+function tunnelNote(url: string, tunnelId?: number): string {
+  if (tunnelId) return `- Tunnel: ${tunnelId}\n\n`;
+  if (isPrivateUrl(url)) {
+    return `> ⚠️ ${PRIVATE_URL_HINT} Then pass its numeric ID as \`tunnelId\`.\n\n`;
+  }
+  return "";
 }
 
 export default function addLiveTools(server: any, testingBotApi: any, _config: TestingBotConfig) {
@@ -230,7 +257,7 @@ export default function addLiveTools(server: any, testingBotApi: any, _config: T
 
   tools.startLiveSession = server.tool(
     "startLiveSession",
-    "Start an interactive live testing session on TestingBot. Returns a link that opens the session in the user's TestingBot dashboard (they confirm with Start). Supports desktop browsers (Chrome, Firefox, Safari, Edge, IE) and mobile emulators/simulators (Android, iOS).",
+    "Start an interactive live testing session on TestingBot. Returns a link that opens the session in the user's TestingBot dashboard (they confirm with Start). Supports desktop browsers (Chrome, Firefox, Safari, Edge, IE) and mobile emulators/simulators (Android, iOS). For localhost / private-network URLs, start a tunnel first (startTunnel) and pass its numeric ID as tunnelId.",
     {
       platformType: z
         .enum([PlatformType.Desktop, PlatformType.Mobile])
@@ -256,6 +283,13 @@ export default function addLiveTools(server: any, testingBotApi: any, _config: T
         .string()
         .optional()
         .describe("Device name for mobile (e.g., 'iPhone 14', 'Galaxy S23')"),
+      tunnelId: z
+        .union([z.number(), z.string().transform(Number)])
+        .pipe(z.number().int().positive())
+        .optional()
+        .describe(
+          "Numeric ID of a running TestingBot Tunnel (from startTunnel or getTunnelList) to route the session through. Needed for localhost / private-network URLs."
+        ),
     },
     async (args: any) => {
       try {
@@ -285,6 +319,7 @@ export default function addLiveTools(server: any, testingBotApi: any, _config: T
           formattedOutput += `- Browser: ${desktopArgs.desiredBrowser} ${desktopArgs.desiredBrowserVersion || "latest"}\n`;
           formattedOutput += `- OS: ${desktopArgs.desiredOS} ${desktopArgs.desiredOSVersion}\n`;
           formattedOutput += `- URL: ${desktopArgs.desiredURL}\n\n`;
+          formattedOutput += tunnelNote(desktopArgs.desiredURL, desktopArgs.tunnelId);
         } else {
           const mobileArgs = validatedArgs as MobileLiveArgs;
           formattedOutput += `**Configuration:**\n`;
@@ -292,6 +327,7 @@ export default function addLiveTools(server: any, testingBotApi: any, _config: T
           formattedOutput += `- Device: ${mobileArgs.desiredDevice}\n`;
           formattedOutput += `- OS: ${mobileArgs.desiredOS} ${mobileArgs.desiredOSVersion}\n`;
           formattedOutput += `- URL: ${mobileArgs.desiredURL}\n\n`;
+          formattedOutput += tunnelNote(mobileArgs.desiredURL, mobileArgs.tunnelId);
         }
 
         formattedOutput += `**Instructions:**\n`;
@@ -316,7 +352,7 @@ export default function addLiveTools(server: any, testingBotApi: any, _config: T
 
   tools.startDesktopLiveSession = server.tool(
     "startDesktopLiveSession",
-    "Convenience tool to start a desktop browser live testing session. Automatically sets platformType to 'desktop'.",
+    "Convenience tool to start a desktop browser live testing session. Automatically sets platformType to 'desktop'. For localhost / private-network URLs, pass the tunnelId of a running tunnel (startTunnel).",
     {
       desiredURL: z.string().url().describe("The URL to open in the browser"),
       desiredOS: z
@@ -331,6 +367,13 @@ export default function addLiveTools(server: any, testingBotApi: any, _config: T
         .optional()
         .default("latest")
         .describe("Browser version or 'latest' (default: latest)"),
+      tunnelId: z
+        .union([z.number(), z.string().transform(Number)])
+        .pipe(z.number().int().positive())
+        .optional()
+        .describe(
+          "Numeric ID of a running TestingBot Tunnel (from startTunnel or getTunnelList) to route the session through. Needed for localhost / private-network URLs."
+        ),
     },
     async (args: Omit<DesktopLiveArgs, "platformType">) => {
       try {
@@ -347,6 +390,7 @@ export default function addLiveTools(server: any, testingBotApi: any, _config: T
         formattedOutput += `- Browser: ${args.desiredBrowser} ${args.desiredBrowserVersion || "latest"}\n`;
         formattedOutput += `- OS: ${args.desiredOS} ${args.desiredOSVersion}\n`;
         formattedOutput += `- URL: ${args.desiredURL}\n\n`;
+        formattedOutput += tunnelNote(args.desiredURL, args.tunnelId);
         formattedOutput += `Click the URL above to start your interactive testing session.`;
 
         return {
@@ -365,12 +409,19 @@ export default function addLiveTools(server: any, testingBotApi: any, _config: T
 
   tools.startMobileLiveSession = server.tool(
     "startMobileLiveSession",
-    "Convenience tool to start a live testing session on a mobile emulator/simulator. Automatically sets platformType to 'mobile'.",
+    "Convenience tool to start a live testing session on a mobile emulator/simulator. Automatically sets platformType to 'mobile'. For localhost / private-network URLs, pass the tunnelId of a running tunnel (startTunnel).",
     {
       desiredURL: z.string().url().describe("The URL to open in the mobile browser"),
       desiredOS: z.enum(["android", "ios"]).describe("Mobile platform (android or ios)"),
       desiredOSVersion: z.string().describe("OS version (e.g., '13.0', '16.0')"),
       desiredDevice: z.string().describe("Device name (e.g., 'iPhone 14', 'Galaxy S23')"),
+      tunnelId: z
+        .union([z.number(), z.string().transform(Number)])
+        .pipe(z.number().int().positive())
+        .optional()
+        .describe(
+          "Numeric ID of a running TestingBot Tunnel (from startTunnel or getTunnelList) to route the session through. Needed for localhost / private-network URLs."
+        ),
     },
     async (args: Omit<MobileLiveArgs, "platformType">) => {
       try {
@@ -387,6 +438,7 @@ export default function addLiveTools(server: any, testingBotApi: any, _config: T
         formattedOutput += `- Device: ${args.desiredDevice}\n`;
         formattedOutput += `- OS: ${args.desiredOS} ${args.desiredOSVersion}\n`;
         formattedOutput += `- URL: ${args.desiredURL}\n\n`;
+        formattedOutput += tunnelNote(args.desiredURL, args.tunnelId);
         formattedOutput += `Click the URL above to start your interactive mobile testing session.`;
 
         return {
