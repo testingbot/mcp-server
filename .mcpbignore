@@ -34,6 +34,8 @@ Thumbs.db
 CONTRIBUTING.md
 CHANGELOG.md
 .npmignore
+glama.json
+server.json
 
 # Test fixtures, examples, and changelogs inside dependencies.
 node_modules/**/test/

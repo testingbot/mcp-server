@@ -63,3 +63,57 @@ jobs:
       # (trusted publishing usually emits it automatically).
       - name: Publish to npm
         run: npm publish --provenance --access public
+
+  # List the release in the official MCP Registry (registry.modelcontextprotocol.io),
+  # which VS Code, GitHub and other MCP directories read from. Runs after npm has
+  # the new version, because the registry checks the package's mcpName on npm.
+  # The com.testingbot namespace is proven with an Ed25519 key whose public half is
+  # a TXT record on testingbot.com (v=MCPv1; k=ed25519; p=...). The private key, in
+  # hex, is the MCP_PRIVATE_KEY secret.
+  mcp-registry:
+    needs: publish
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      MCP_PUBLISHER_VERSION: v1.8.1
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      - name: Download and verify mcp-publisher
+        run: |
+          set -euo pipefail
+          os="$(uname -s | tr '[:upper:]' '[:lower:]')"
+          arch="$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')"
+          archive="mcp-publisher_${os}_${arch}.tar.gz"
+          base_url="https://github.com/modelcontextprotocol/registry/releases/download/${MCP_PUBLISHER_VERSION}"
+          curl --fail --location --silent --show-error --output "$archive" "$base_url/$archive"
+          curl --fail --location --silent --show-error --output "$archive.sigstore.json" "$base_url/$archive.sigstore.json"
+          cosign verify-blob \
+            --bundle "$archive.sigstore.json" \
+            --certificate-identity "https://github.com/modelcontextprotocol/registry/.github/workflows/release.yml@refs/tags/${MCP_PUBLISHER_VERSION}" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            "$archive"
+          tar xzf "$archive" mcp-publisher
+          rm -f "$archive" "$archive.sigstore.json"
+
+      # npm can take a moment to serve a just-published version.
+      - name: Wait for the version on npm
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          for i in $(seq 1 30); do
+            npm view "@testingbot/mcp-server@${VERSION}" version && exit 0
+            sleep 10
+          done
+          echo "::error::@testingbot/mcp-server@${VERSION} not on npm after 5 minutes"
+          exit 1
+
+      - name: Authenticate to MCP Registry
+        run: ./mcp-publisher login dns --domain testingbot.com --private-key "${{ secrets.MCP_PRIVATE_KEY }}"
+
+      - name: Publish to MCP Registry
+        run: ./mcp-publisher publish
