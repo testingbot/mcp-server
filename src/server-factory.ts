@@ -3,9 +3,8 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import { TestingBotConfig } from "./lib/types.js";
 import logger from "./lib/logger.js";
+import { toolInputSchema } from "./lib/tool-schema.js";
 import { createRequire } from "module";
-import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 const require = createRequire(import.meta.url);
 const packageJson = require("../package.json");
@@ -284,15 +283,5 @@ export class TestingBotMcpServer {
   }
 }
 
-// Converts a tool's Zod shape (`{ arg: z.string(), ... }`) to the JSON Schema
-// object MCP expects as `inputSchema`. Inline everything ($refStrategy none):
-// MCP clients do not resolve $ref, and a reused sub-schema would otherwise be
-// emitted as a reference to a definition that is not part of the payload.
-export function toolInputSchema(shape: Record<string, any> | undefined): any {
-  const converted: any = zodToJsonSchema(z.object(shape ?? {}), {
-    target: "jsonSchema7",
-    $refStrategy: "none",
-  });
-  delete converted.$schema;
-  return converted;
-}
+// Kept here for existing imports; shared with the hosted (HTTP) server.
+export { toolInputSchema } from "./lib/tool-schema.js";

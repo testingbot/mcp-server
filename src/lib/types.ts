@@ -1,6 +1,13 @@
 export type TestingBotConfig = {
   "testingbot-key": string;
   "testingbot-secret": string;
+  // Hosted (HTTP) mode only: the caller's OAuth access token, forwarded
+  // verbatim to the TestingBot API as `Authorization: Bearer`. When set, the
+  // key/secret are empty and never used.
+  "testingbot-bearer"?: string;
+  // Hosted mode only: API base (default https://api.testingbot.com), so a
+  // staging/dev resource server can point at a local Rails.
+  "api-base"?: string;
 };
 
 export interface TestingBotOptions {

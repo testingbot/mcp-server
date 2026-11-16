@@ -859,6 +859,30 @@ The bundle is unsigned. To sign for distribution, run `mcpb sign --self-signed` 
 
 `releases/*.mcpb` is gitignored — upload the artefact to the GitHub releases page (or wherever your install URL points at) after building.
 
+## Hosted mode (`--http`, early access)
+
+`testingbot-mcp-server --http --port 3100` runs the server as a remote MCP endpoint
+(Streamable HTTP, stateless, JSON responses only) for clients that cannot start a local
+process, such as claude.ai and ChatGPT. It is what will run at `https://mcp.testingbot.com/mcp`;
+stdio mode is unchanged.
+
+- Sign-in is OAuth 2.1 + PKCE against `https://testingbot.com` (the authorization server).
+  The client sends `Authorization: Bearer <token>`; this server validates it through the
+  authorization server's introspection endpoint (cached 60 s) and forwards it to the
+  TestingBot API. It never holds an API key or secret.
+- `initialize`, `tools/list` and the public catalog tools (`getBrowsers`, `getDevices`,
+  `maestroCheatSheet`) work without a token. Other tools answer `401` with
+  `WWW-Authenticate: Bearer ... resource_metadata=...`; write tools with a read-only token
+  answer `403 insufficient_scope`.
+- Protected resource metadata: `/.well-known/oauth-protected-resource[/mcp]`. Health: `/healthz`.
+- Only API-backed tools are offered (see `src/hosted/tool-policy.ts`); local-file, tunnel,
+  CDP and browser/Appium automation tools stay stdio-only. Delete tools need
+  `MCP_HOSTED_DESTRUCTIVE_TOOLS=1`. Tool calls are capped at 60 s and 120 calls/min per grant.
+
+Environment: `MCP_PUBLIC_URL`, `OAUTH_ISSUER`, `TB_API_BASE`, `OAUTH_INTROSPECT_URL`,
+`OAUTH_INTROSPECT_HOST`, `OAUTH_INTROSPECT_SECRET` (required), `MCP_ALLOWED_HOSTS`,
+`MCP_BIND` (default `127.0.0.1`), `LOG_LEVEL`.
+
 ## Project Structure
 
 ```

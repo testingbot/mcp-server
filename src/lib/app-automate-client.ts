@@ -8,7 +8,7 @@ import { getAuth } from "./get-auth.js";
 // XCUITest) API. These endpoints are not covered by the testingbot-api npm
 // package, so we call them directly. Endpoint contract mirrors
 // testingbotctl's providers (https://github.com/testingbot/testingbotctl).
-const APP_AUTOMATE_URL = "https://api.testingbot.com/v1/app-automate";
+const DEFAULT_API_BASE = "https://api.testingbot.com";
 const JSON_TIMEOUT_MS = 30_000;
 const UPLOAD_TIMEOUT_MS = 600_000;
 
@@ -154,10 +154,17 @@ export interface FrameworkRunStarted {
 
 export class AppAutomateClient {
   private authHeader: string;
+  private baseUrl: string;
 
   constructor(config: TestingBotConfig) {
-    const { username, password } = getAuth(config);
-    this.authHeader = "Basic " + Buffer.from(`${username}:${password}`).toString("base64");
+    if (config["testingbot-bearer"]) {
+      // Hosted mode: forward the caller's OAuth token, never a key/secret.
+      this.authHeader = `Bearer ${config["testingbot-bearer"]}`;
+    } else {
+      const { username, password } = getAuth(config);
+      this.authHeader = "Basic " + Buffer.from(`${username}:${password}`).toString("base64");
+    }
+    this.baseUrl = `${(config["api-base"] || DEFAULT_API_BASE).replace(/\/+$/, "")}/v1/app-automate`;
   }
 
   static md5Checksum(filePath: string): Promise<string> {
@@ -382,7 +389,7 @@ export class AppAutomateClient {
   }
 
   private async submitForm(endpoint: string, form: FormData): Promise<unknown> {
-    const response = await fetch(`${APP_AUTOMATE_URL}${endpoint}`, {
+    const response = await fetch(`${this.baseUrl}${endpoint}`, {
       method: "POST",
       headers: { Authorization: this.authHeader },
       body: form,
@@ -403,7 +410,7 @@ export class AppAutomateClient {
     timeoutMs: number,
     allowErrorStatus = false
   ): Promise<Response> {
-    const response = await fetch(`${APP_AUTOMATE_URL}${endpoint}`, {
+    const response = await fetch(`${this.baseUrl}${endpoint}`, {
       method,
       headers: {
         Authorization: this.authHeader,

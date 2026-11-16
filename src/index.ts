@@ -18,6 +18,14 @@ const require = createRequire(import.meta.url);
 const TestingBot = require("testingbot-api");
 
 async function main() {
+  // Hosted mode (mcp.testingbot.com): Streamable HTTP + OAuth bearer tokens.
+  // Opt-in by flag; the stdio server below is unchanged.
+  if (process.argv.includes("--http")) {
+    const { startHttp } = await import("./http.js");
+    await startHttp();
+    return;
+  }
+
   logger.info("Starting TestingBot MCP Server...");
 
   const config = getConfig();
