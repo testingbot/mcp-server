@@ -503,6 +503,25 @@ Start a run. Returns immediately with the run ID.
 #### `getAppAutomateRunStatus` / `getAppAutomateRunResults`
 Poll run progress, then fetch per-run outcomes and the JUnit XML report. Each run's Appium session ID is surfaced, so `getTestDetails` / `getFailureLogs` work for logs and video.
 
+### Visual Testing Review
+
+Review [hosted visual tests](https://testingbot.com/support/visual-testing/ci#review-api): find failed runs, see what changed, approve or reject. When the account owner has turned on AI region names, each changed region carries a one-line AI description of the change; reading a run never sends anything to an AI provider.
+
+#### `getVisualTests`
+List hosted visual tests. **Parameters:** `offset`, `limit` (optional)
+
+#### `getVisualRuns`
+List visual runs, newest first. **Parameters:** `testId`, `state` (`failed`, `unreviewed`, `passed`), `offset`, `limit` (all optional)
+
+#### `explainVisualRun`
+What changed in a run: regions with names, AI change descriptions, text and CSS changes, and image links. **Parameters:** `runId`
+
+**Example prompt:**
+> "Which visual tests failed today, and what changed on the pricing page?"
+
+#### `reviewVisualRun`
+Approve or reject a run. **Parameters:** `runId`, `decision` (`approve`/`reject`), `makeBaseline` (optional, with approve)
+
 ### Screenshot Testing
 
 #### `takeScreenshot`
