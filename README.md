@@ -566,11 +566,12 @@ Update user account information.
 ### Team Management
 
 #### `getTeam`
-Get team information including concurrency limits, allowed parallel VMs, and mobile concurrency.
+Get team information including concurrency: parallel sessions allowed, running right now and queued (waiting for a free slot), for VMs and physical devices. Counts are team-wide and match the dashboard.
 
 **Example prompt:**
 > "Show my team information"
 > "What are my team's concurrency limits?"
+> "How many of my tests are running or queued right now?"
 
 #### `getUsersInTeam`
 List all users in your team with their roles and access levels.
