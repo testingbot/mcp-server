@@ -648,6 +648,27 @@ Delete an active TestingBot tunnel by ID. This terminates the tunnel connection.
 **Example prompt:**
 > "Delete tunnel 12345"
 
+## Prompts, Resources and Agent Skills
+
+Besides tools, the server offers MCP **prompts**: task recipes your client can show as slash commands:
+
+| Prompt | Arguments | What it does |
+| --- | --- | --- |
+| `why-did-my-test-fail` | `sessionId` | Test status, AI failure analysis when enabled, failing log lines, likely cause and fixes |
+| `summarise-build` | `buildId` | Pass/fail counts, failures grouped by shared cause, what to fix first |
+| `find-flaky-tests` | `timeRange` (optional, default `30d`) | Tests that both passed and failed, and why each is unstable |
+
+and read-only **resources** a client can attach to a conversation:
+
+| URI | Content |
+| --- | --- |
+| `testingbot://tests/{sessionId}` | Test details (JSON) |
+| `testingbot://tests/{sessionId}/logs/{logType}` | One log file, last 200 KB (`selenium`, `browser`, `chrome`, `vm`, `appium`) |
+| `testingbot://builds/{buildId}` | Tests in a build (JSON) |
+| `testingbot://insights/flaky-tests` | Flaky tests over the last 30 days; `?time_range=7d` to change it |
+
+The same recipes ship as agent skills in [`skills/`](skills/) (one `SKILL.md` per task) for agents that load skills from files.
+
 ## Usage Examples
 
 ### Example 1: Running Cross-Browser Tests

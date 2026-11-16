@@ -1,6 +1,16 @@
 import { Server as McpServer } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
+import {
+  CallToolRequestSchema,
+  GetPromptRequestSchema,
+  ListPromptsRequestSchema,
+  ListResourceTemplatesRequestSchema,
+  ListResourcesRequestSchema,
+  ListToolsRequestSchema,
+  ReadResourceRequestSchema,
+} from "@modelcontextprotocol/sdk/types.js";
+import { getPrompt, listPrompts } from "./prompts.js";
+import { RESOURCE_TEMPLATES, STATIC_RESOURCES, readResource } from "./resources.js";
 import { TestingBotConfig } from "./lib/types.js";
 import logger from "./lib/logger.js";
 import { createRequire } from "module";
@@ -50,6 +60,11 @@ export class TestingBotMcpServer {
           // listChanged lets us notify clients when tb_login re-registers
           // credential-dependent (automation) tools after a successful login.
           tools: { listChanged: true },
+          // Task recipes ("why did my test fail", "summarise a build", "find
+          // flaky tests") and read-only test/build/log data (src/prompts.ts,
+          // src/resources.ts).
+          prompts: {},
+          resources: {},
         },
       }
     );
@@ -73,6 +88,37 @@ export class TestingBotMcpServer {
 
       return this.handleToolCall(toolName, toolArgs);
     });
+
+    this.server.setRequestHandler(ListPromptsRequestSchema, async () => ({
+      prompts: listPrompts(),
+    }));
+
+    this.server.setRequestHandler(GetPromptRequestSchema, async (request) =>
+      getPrompt(request.params.name, (request.params.arguments ?? {}) as Record<string, string>)
+    );
+
+    this.server.setRequestHandler(ListResourcesRequestSchema, async () => ({
+      resources: STATIC_RESOURCES,
+    }));
+
+    this.server.setRequestHandler(ListResourceTemplatesRequestSchema, async () => ({
+      resourceTemplates: RESOURCE_TEMPLATES,
+    }));
+
+    this.server.setRequestHandler(ReadResourceRequestSchema, async (request) =>
+      this.handleResourceRead(request.params.uri)
+    );
+  }
+
+  // Same degraded-mode rule as tools: without credentials, say how to log in.
+  public async handleResourceRead(uri: string) {
+    if (!this.hasCredentials()) {
+      throw new Error(
+        "No TestingBot credentials configured. Run the tb_login tool to authenticate, or set TESTINGBOT_KEY and TESTINGBOT_SECRET."
+      );
+    }
+    logger.info({ uri }, "Resource read");
+    return readResource(this.testingBotApi, uri);
   }
 
   // The tools/list payload. Proxied tools (e.g. appium-mcp) pre-stash a raw
