@@ -27,7 +27,7 @@ export function createBearerApi(token: string | null, apiBase: string = DEFAULT_
     if (token) opts.headers.Authorization = `Bearer ${token}`;
     if (
       typeof opts.url === "string" &&
-      opts.url.startsWith(DEFAULT_API_BASE) &&
+      opts.url.startsWith(`${DEFAULT_API_BASE}/`) &&
       base !== DEFAULT_API_BASE
     ) {
       opts.url = base + opts.url.slice(DEFAULT_API_BASE.length);
