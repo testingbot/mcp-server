@@ -331,6 +331,27 @@ Stop a running test by session ID.
 **Example prompt:**
 > "Stop test abc123"
 
+### AI Failure Analysis
+
+Explanations from [TestingBot AI Insights](https://testingbot.com/support/ai/insights): summary, root cause, timeline, log evidence, suggested fixes, a failure category, the likely owner and a confidence score. The account owner must first enable **AI Analysis** in Account Settings, which records consent to sending curated, secret-masked test logs to TestingBot's AI provider; until then both tools say how to turn it on and nothing is sent.
+
+#### `analyzeTestFailure`
+Start (or reuse) an AI failure analysis of a finished test and wait for the result. A current analysis is returned without extra cost.
+
+**Parameters:**
+- `sessionId`: Session ID (or numeric test ID)
+- `force` (optional): Run a fresh analysis even if one exists
+- `waitSeconds` (optional): How long to wait for the result (default 90, 0 returns immediately)
+
+**Example prompt:**
+> "Why did test abc123 fail?"
+
+#### `getAiFailureAnalysis`
+Read an existing analysis. Never starts one.
+
+**Parameters:**
+- `sessionId`: Session ID (or numeric test ID)
+
 ### Build Management
 
 #### `getBuilds`
