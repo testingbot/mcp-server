@@ -1,11 +1,19 @@
 import { Server as McpServer } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
+import {
+  CallToolRequestSchema,
+  GetPromptRequestSchema,
+  ListPromptsRequestSchema,
+  ListResourceTemplatesRequestSchema,
+  ListResourcesRequestSchema,
+  ListToolsRequestSchema,
+  ReadResourceRequestSchema,
+} from "@modelcontextprotocol/sdk/types.js";
+import { getPrompt, listPrompts } from "./prompts.js";
+import { RESOURCE_TEMPLATES, STATIC_RESOURCES, readResource } from "./resources.js";
 import { TestingBotConfig } from "./lib/types.js";
 import logger from "./lib/logger.js";
 import { createRequire } from "module";
-import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 const require = createRequire(import.meta.url);
 const packageJson = require("../package.json");
@@ -23,11 +31,20 @@ import addTunnelTools from "./tools/tunnels.js";
 import { tunnelManager } from "./lib/tunnel-manager.js";
 import addLogTools from "./tools/logs.js";
 import addAssetTools from "./tools/assets.js";
+import addVisualTools from "./tools/visual.js";
+import addAccessibilityTools from "./tools/accessibility.js";
+import addAiAnalysisTools from "./tools/ai-analysis.js";
 import addProjectTools from "./tools/project.js";
 import addMaestroTools from "./tools/maestro.js";
 import addAppAutomateTools from "./tools/app-automate.js";
 import addAuthTools from "./tools/auth.js";
-import { addAutomationTools, type AutomationHandle } from "@testingbot/automation-mcp";
+import {
+  addAutomationTools,
+  invalidArgsResult,
+  parseToolArgs,
+  toolInputSchema,
+  type AutomationHandle,
+} from "@testingbot/automation-mcp";
 
 export class TestingBotMcpServer {
   public server: McpServer;
@@ -51,6 +68,11 @@ export class TestingBotMcpServer {
           // listChanged lets us notify clients when tb_login re-registers
           // credential-dependent (automation) tools after a successful login.
           tools: { listChanged: true },
+          // Task recipes ("why did my test fail", "summarise a build", "find
+          // flaky tests") and read-only test/build/log data (src/prompts.ts,
+          // src/resources.ts).
+          prompts: {},
+          resources: {},
         },
       }
     );
@@ -74,6 +96,37 @@ export class TestingBotMcpServer {
 
       return this.handleToolCall(toolName, toolArgs);
     });
+
+    this.server.setRequestHandler(ListPromptsRequestSchema, async () => ({
+      prompts: listPrompts(),
+    }));
+
+    this.server.setRequestHandler(GetPromptRequestSchema, async (request) =>
+      getPrompt(request.params.name, (request.params.arguments ?? {}) as Record<string, string>)
+    );
+
+    this.server.setRequestHandler(ListResourcesRequestSchema, async () => ({
+      resources: STATIC_RESOURCES,
+    }));
+
+    this.server.setRequestHandler(ListResourceTemplatesRequestSchema, async () => ({
+      resourceTemplates: RESOURCE_TEMPLATES,
+    }));
+
+    this.server.setRequestHandler(ReadResourceRequestSchema, async (request) =>
+      this.handleResourceRead(request.params.uri)
+    );
+  }
+
+  // Same degraded-mode rule as tools: without credentials, say how to log in.
+  public async handleResourceRead(uri: string) {
+    if (!this.hasCredentials()) {
+      throw new Error(
+        "No TestingBot credentials configured. Run the tb_login tool to authenticate, or set TESTINGBOT_KEY and TESTINGBOT_SECRET."
+      );
+    }
+    logger.info({ uri }, "Resource read");
+    return readResource(this.testingBotApi, uri);
   }
 
   // The tools/list payload. Proxied tools (e.g. appium-mcp) pre-stash a raw
@@ -113,7 +166,14 @@ export class TestingBotMcpServer {
       };
     }
 
-    return tool.handler(toolArgs);
+    // Proxied tools (appium-mcp) carry a raw JSON Schema and check their own
+    // arguments. Local tools are parsed against their Zod shape, so a missing
+    // or wrong argument comes back as a clear message instead of a crash
+    // inside the handler, and handlers get defaults and coercions applied.
+    if (tool.inputSchema) return tool.handler(toolArgs);
+    const parsed = parseToolArgs(tool.schema, toolArgs);
+    if (!parsed.success) return invalidArgsResult(toolName, parsed.message);
+    return tool.handler(parsed.data);
   }
 
   private hasCredentials(): boolean {
@@ -174,6 +234,9 @@ export class TestingBotMcpServer {
       addTunnelTools,
       addLogTools,
       addAssetTools,
+      addVisualTools,
+      addAccessibilityTools,
+      addAiAnalysisTools,
       addProjectTools,
       addMaestroTools,
       addAppAutomateTools,
@@ -286,15 +349,6 @@ export class TestingBotMcpServer {
   }
 }
 
-// Converts a tool's Zod shape (`{ arg: z.string(), ... }`) to the JSON Schema
-// object MCP expects as `inputSchema`. Inline everything ($refStrategy none):
-// MCP clients do not resolve $ref, and a reused sub-schema would otherwise be
-// emitted as a reference to a definition that is not part of the payload.
-export function toolInputSchema(shape: Record<string, any> | undefined): any {
-  const converted: any = zodToJsonSchema(z.object(shape ?? {}), {
-    target: "jsonSchema7",
-    $refStrategy: "none",
-  });
-  delete converted.$schema;
-  return converted;
-}
+// Shared with @testingbot/automation-mcp: one Zod → JSON Schema conversion for
+// every tool this server lists, and the same argument checks.
+export { toolInputSchema };

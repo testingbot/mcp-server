@@ -59,6 +59,27 @@ describe("tools/list input schemas", () => {
     expect(schema.required).toEqual(["id"]);
   });
 
+  it("keeps the limits and default of a number-or-string param", () => {
+    const schema = toolInputSchema({
+      limit: z
+        .union([z.number(), z.string().transform(Number)])
+        .pipe(z.number().min(1).max(100))
+        .optional()
+        .default(10)
+        .describe("Page size"),
+    });
+    expect(schema.properties.limit).toEqual({
+      description: "Page size",
+      default: 10,
+      allOf: [
+        { anyOf: [{ type: "number" }, { type: "string" }] },
+        { type: "number", minimum: 1, maximum: 100 },
+      ],
+    });
+    expect(schema.required ?? []).not.toContain("limit");
+    expect(schema.additionalProperties).toBe(false);
+  });
+
   it("passes a proxied tool's raw JSON Schema through unchanged", () => {
     const raw = { type: "object", properties: { x: { type: "number" } }, required: ["x"] };
     server.tools.proxied = {

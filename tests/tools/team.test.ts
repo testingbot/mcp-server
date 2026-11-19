@@ -42,7 +42,11 @@ describe("Team Tools", () => {
             physical: 2,
           },
           current: {
-            vms: 0,
+            vms: 1,
+            physical: 3,
+          },
+          queued: {
+            vms: 4,
             physical: 0,
           },
         },
@@ -61,6 +65,18 @@ describe("Team Tools", () => {
       expect(result.content[0].text).toContain("Concurrency");
       expect(result.content[0].text).toContain("VMs: 2");
       expect(result.content[0].text).toContain("Physical: 2");
+      expect(result.content[0].text).toContain("**Running now**:\n- VMs: 1\n- Physical: 3");
+      expect(result.content[0].text).toContain("**Queued (waiting for a free slot)**:\n- VMs: 4\n- Physical: 0");
+    });
+
+    it("prints running physical sessions even without a VM count", async () => {
+      testingBotApiMock.getTeam.mockResolvedValue({ concurrency: { current: { physical: 2 } } });
+
+      const tools = addTeamTools(serverMock, testingBotApiMock, configMock);
+      const result = await tools.getTeam.handler({});
+
+      expect(result.content[0].text).toContain("**Running now**:\n- Physical: 2");
+      expect(result.content[0].text).not.toContain("Queued");
     });
 
     it("should handle API errors", async () => {

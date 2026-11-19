@@ -10,7 +10,7 @@ TestingBot's official Model Context Protocol (MCP) server implementation. This s
 
 [![Install in VS Code](https://img.shields.io/badge/Install-VS_Code-007ACC?style=for-the-badge&logo=visualstudiocode&logoColor=white)](https://testingbot.com/mcp/install?client=vscode) [![Install in Cursor](https://img.shields.io/badge/Install-Cursor-000000?style=for-the-badge&logo=cursor&logoColor=white)](https://testingbot.com/mcp/install?client=cursor)
 
-**Claude Desktop**: download `mcp-server.mcpb` from the [releases page](https://github.com/testingbot/mcp-server/releases) and double-click it. Claude will set up the TestingBot MCP server automatically.
+**Claude Desktop**: download `testingbot-mcp-server-<version>.mcpb` from the [latest release](https://github.com/testingbot/mcp-server/releases/latest) and double-click it. Claude will set up the TestingBot MCP server automatically.
 
 After install, set your credentials from [TestingBot account settings](https://testingbot.com/members/user/security).
 
@@ -334,7 +334,7 @@ Stop a running test by session ID.
 
 ### Test Assets
 
-Available from version 1.3.0. These tools use the test's asset list (`GET /v1/tests/:id/assets`), so they always work with fresh download links (video, log, HAR and performance links expire after one hour).
+Available from version 1.4.0. These tools use the test's asset list (`GET /v1/tests/:id/assets`), so they always work with fresh download links (video, log, HAR and performance links expire after one hour).
 
 #### `getTestAssets`
 List every file a test produced: video, each log file (Selenium, browser console, driver, Appium, logcat, ...), the HAR network capture, performance samples and screenshots, as download URLs.
@@ -377,6 +377,27 @@ Summarize the performance samples recorded during the test (the data behind the 
 
 **Example prompt:**
 > "Was CPU or memory high during test abc123?"
+
+### AI Failure Analysis
+
+Explanations from [TestingBot AI Insights](https://testingbot.com/support/ai/insights): summary, root cause, timeline, log evidence, suggested fixes, a failure category, the likely owner and a confidence score. The account owner must first enable **AI Analysis** in Account Settings, which records consent to sending curated, secret-masked test logs to TestingBot's AI provider; until then both tools say how to turn it on and nothing is sent.
+
+#### `analyzeTestFailure`
+Start (or reuse) an AI failure analysis of a finished test and wait for the result. A current analysis is returned without extra cost.
+
+**Parameters:**
+- `sessionId`: Session ID (or numeric test ID)
+- `force` (optional): Run a fresh analysis even if one exists
+- `waitSeconds` (optional): How long to wait for the result (default 90, 0 returns immediately)
+
+**Example prompt:**
+> "Why did test abc123 fail?"
+
+#### `getAiFailureAnalysis`
+Read an existing analysis. Never starts one.
+
+**Parameters:**
+- `sessionId`: Session ID (or numeric test ID)
 
 ### Build Management
 
@@ -550,6 +571,44 @@ Start a run. Returns immediately with the run ID.
 #### `getAppAutomateRunStatus` / `getAppAutomateRunResults`
 Poll run progress, then fetch per-run outcomes and the JUnit XML report. Each run's Appium session ID is surfaced, so `getTestDetails` / `getFailureLogs` work for logs and video.
 
+### Visual Testing Review
+
+Review [hosted visual tests](https://testingbot.com/support/visual-testing/ci#review-api): find failed runs, see what changed, approve or reject. When the account owner has turned on AI region names, each changed region carries a one-line AI description of the change; reading a run never sends anything to an AI provider.
+
+#### `getVisualTests`
+List hosted visual tests. **Parameters:** `offset`, `limit` (optional)
+
+#### `getVisualRuns`
+List visual runs, newest first. **Parameters:** `testId`, `state` (`failed`, `unreviewed`, `passed`), `offset`, `limit` (all optional)
+
+#### `explainVisualRun`
+What changed in a run: regions with names, AI change descriptions, text and CSS changes, and image links. **Parameters:** `runId`
+
+**Example prompt:**
+> "Which visual tests failed today, and what changed on the pricing page?"
+
+#### `reviewVisualRun`
+Approve or reject a run. **Parameters:** `runId`, `decision` (`approve`/`reject`), `makeBaseline` (optional, with approve)
+
+### Accessibility Testing
+
+Results of scheduled [accessibility scans](https://testingbot.com/support/accessibility), scored like the dashboard: WCAG A/AA violations decide pass/fail; needs-review items and best-practice recommendations do not. Automated checks cover only part of WCAG.
+
+#### `getAccessibilityTests`
+Scheduled accessibility tests with their latest result. **Parameters:** `offset`, `limit` (optional)
+
+#### `getAccessibilityRuns`
+Scans of one test, newest first. **Parameters:** `testId`, `offset`, `limit`
+
+#### `getAccessibilityFindings`
+Failing rules with the elements (selector, HTML, how to fix) and what is new or resolved since the previous scan. **Parameters:** `runId`, `elementsPerRule` (optional, default 5)
+
+**Example prompt:**
+> "What accessibility issues does our checkout page have, and which are new since the last scan?"
+
+#### `runAccessibilityTest`
+Start a scan now. **Parameters:** `testId`
+
 ### Screenshot Testing
 
 #### `takeScreenshot`
@@ -613,11 +672,12 @@ Update user account information.
 ### Team Management
 
 #### `getTeam`
-Get team information including concurrency limits, allowed parallel VMs, and mobile concurrency.
+Get team information including concurrency: parallel sessions allowed, running right now and queued (waiting for a free slot), for VMs and physical devices. Counts are team-wide and match the dashboard.
 
 **Example prompt:**
 > "Show my team information"
 > "What are my team's concurrency limits?"
+> "How many of my tests are running or queued right now?"
 
 #### `getUsersInTeam`
 List all users in your team with their roles and access levels.
@@ -694,6 +754,27 @@ Delete an active TestingBot tunnel by ID. This terminates the tunnel connection.
 
 **Example prompt:**
 > "Delete tunnel 12345"
+
+## Prompts, Resources and Agent Skills
+
+Besides tools, the server offers MCP **prompts**: task recipes your client can show as slash commands:
+
+| Prompt | Arguments | What it does |
+| --- | --- | --- |
+| `why-did-my-test-fail` | `sessionId` | Test status, AI failure analysis when enabled, failing log lines, likely cause and fixes |
+| `summarise-build` | `buildId` | Pass/fail counts, failures grouped by shared cause, what to fix first |
+| `find-flaky-tests` | `timeRange` (optional, default `30d`) | Tests that both passed and failed, and why each is unstable |
+
+and read-only **resources** a client can attach to a conversation:
+
+| URI | Content |
+| --- | --- |
+| `testingbot://tests/{sessionId}` | Test details (JSON) |
+| `testingbot://tests/{sessionId}/logs/{logType}` | One log file, last 200 KB (`selenium`, `browser`, `chrome`, `vm`, `appium`) |
+| `testingbot://builds/{buildId}` | Tests in a build (JSON) |
+| `testingbot://insights/flaky-tests` | Flaky tests over the last 30 days; `?time_range=7d` to change it |
+
+The same recipes ship as agent skills in [`skills/`](skills/) (one `SKILL.md` per task) for agents that load skills from files.
 
 ## Usage Examples
 
