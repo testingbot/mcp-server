@@ -33,6 +33,7 @@ import addTunnelTools from "./tools/tunnels.js";
 import { tunnelManager } from "./lib/tunnel-manager.js";
 import addLogTools from "./tools/logs.js";
 import addVisualTools from "./tools/visual.js";
+import addAccessibilityTools from "./tools/accessibility.js";
 import addAiAnalysisTools from "./tools/ai-analysis.js";
 import addProjectTools from "./tools/project.js";
 import addMaestroTools from "./tools/maestro.js";
@@ -221,6 +222,7 @@ export class TestingBotMcpServer {
       addTunnelTools,
       addLogTools,
       addVisualTools,
+      addAccessibilityTools,
       addAiAnalysisTools,
       addProjectTools,
       addMaestroTools,

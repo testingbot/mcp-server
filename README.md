@@ -543,6 +543,25 @@ What changed in a run: regions with names, AI change descriptions, text and CSS 
 #### `reviewVisualRun`
 Approve or reject a run. **Parameters:** `runId`, `decision` (`approve`/`reject`), `makeBaseline` (optional, with approve)
 
+### Accessibility Testing
+
+Results of scheduled [accessibility scans](https://testingbot.com/support/accessibility), scored like the dashboard: WCAG A/AA violations decide pass/fail; needs-review items and best-practice recommendations do not. Automated checks cover only part of WCAG.
+
+#### `getAccessibilityTests`
+Scheduled accessibility tests with their latest result. **Parameters:** `offset`, `limit` (optional)
+
+#### `getAccessibilityRuns`
+Scans of one test, newest first. **Parameters:** `testId`, `offset`, `limit`
+
+#### `getAccessibilityFindings`
+Failing rules with the elements (selector, HTML, how to fix) and what is new or resolved since the previous scan. **Parameters:** `runId`, `elementsPerRule` (optional, default 5)
+
+**Example prompt:**
+> "What accessibility issues does our checkout page have, and which are new since the last scan?"
+
+#### `runAccessibilityTest`
+Start a scan now. **Parameters:** `testId`
+
 ### Screenshot Testing
 
 #### `takeScreenshot`
