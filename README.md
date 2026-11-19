@@ -20,6 +20,7 @@ After install, set your credentials from [TestingBot account settings](https://t
 - 🖥️ **Live Testing** - Start interactive manual testing sessions on real browsers and devices
 - 🌐 **Browser & Device Management** - Query available browsers and real devices
 - 🧪 **Test Management** - Create, retrieve, update, and delete tests with comprehensive details
+- 🔎 **Test Assets** - Read a test's HAR network capture, browser console log and performance samples
 - 📦 **Storage Management** - Upload and manage mobile app files (APK, IPA, ZIP)
 - 📸 **Screenshot Testing** - Take cross-browser screenshots
 - 🏗️ **Build Management** - Organize tests into builds
@@ -330,6 +331,52 @@ Stop a running test by session ID.
 
 **Example prompt:**
 > "Stop test abc123"
+
+### Test Assets
+
+Available from version 1.4.0. These tools use the test's asset list (`GET /v1/tests/:id/assets`), so they always work with fresh download links (video, log, HAR and performance links expire after one hour).
+
+#### `getTestAssets`
+List every file a test produced: video, each log file (Selenium, browser console, driver, Appium, logcat, ...), the HAR network capture, performance samples and screenshots, as download URLs.
+
+**Parameters:**
+- `sessionId`: The session ID of the test
+
+**Example prompt:**
+> "Which files did test abc123 produce?"
+
+#### `getNetworkLog`
+Read the test's HAR network capture and summarize its requests (method, status, duration, size, URL), with the failed (HTTP 4xx/5xx or no response) and slowest requests highlighted. Only sessions that captured network traffic have a HAR file.
+
+**Parameters:**
+- `sessionId`: The session ID of the test
+- `failedOnly` (optional): Only list failed requests (default: false)
+- `urlContains` (optional): Only list requests whose URL contains this text
+- `limit` (optional): Maximum requests to list (default: 50, max: 500)
+
+**Example prompt:**
+> "Which network requests failed in test abc123?"
+> "How long did the calls to /api/ take in test abc123?"
+
+#### `getConsoleLogs`
+Read the browser console log of a test: JavaScript errors, warnings and console messages.
+
+**Parameters:**
+- `sessionId`: The session ID of the test
+- `minLevel` (optional): `all` (default), `warning` or `error`
+- `limit` (optional): Maximum entries to return (default: 200, max: 1000)
+
+**Example prompt:**
+> "Show the JavaScript errors from test abc123"
+
+#### `getPerformanceMetrics`
+Summarize the performance samples recorded during the test (the data behind the Performance tab of the test in the dashboard): the number of samples and min/avg/max per series and field.
+
+**Parameters:**
+- `sessionId`: The session ID of the test
+
+**Example prompt:**
+> "Was CPU or memory high during test abc123?"
 
 ### AI Failure Analysis
 
