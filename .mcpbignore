@@ -34,6 +34,8 @@ Thumbs.db
 CONTRIBUTING.md
 CHANGELOG.md
 .npmignore
+glama.json
+server.json
 
 # Test fixtures, examples, and changelogs inside dependencies.
 node_modules/**/test/
@@ -51,3 +53,6 @@ node_modules/**/man/
 # Output of this script itself.
 releases/
 *.mcpb
+
+# Agent skill files (docs only, not used at runtime).
+skills/
