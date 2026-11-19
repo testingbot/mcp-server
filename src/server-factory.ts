@@ -14,8 +14,6 @@ import { RESOURCE_TEMPLATES, STATIC_RESOURCES, readResource } from "./resources.
 import { TestingBotConfig } from "./lib/types.js";
 import logger from "./lib/logger.js";
 import { createRequire } from "module";
-import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 const require = createRequire(import.meta.url);
 const packageJson = require("../package.json");
@@ -39,7 +37,13 @@ import addProjectTools from "./tools/project.js";
 import addMaestroTools from "./tools/maestro.js";
 import addAppAutomateTools from "./tools/app-automate.js";
 import addAuthTools from "./tools/auth.js";
-import { addAutomationTools, type AutomationHandle } from "@testingbot/automation-mcp";
+import {
+  addAutomationTools,
+  invalidArgsResult,
+  parseToolArgs,
+  toolInputSchema,
+  type AutomationHandle,
+} from "@testingbot/automation-mcp";
 
 export class TestingBotMcpServer {
   public server: McpServer;
@@ -161,7 +165,14 @@ export class TestingBotMcpServer {
       };
     }
 
-    return tool.handler(toolArgs);
+    // Proxied tools (appium-mcp) carry a raw JSON Schema and check their own
+    // arguments. Local tools are parsed against their Zod shape, so a missing
+    // or wrong argument comes back as a clear message instead of a crash
+    // inside the handler, and handlers get defaults and coercions applied.
+    if (tool.inputSchema) return tool.handler(toolArgs);
+    const parsed = parseToolArgs(tool.schema, toolArgs);
+    if (!parsed.success) return invalidArgsResult(toolName, parsed.message);
+    return tool.handler(parsed.data);
   }
 
   private hasCredentials(): boolean {
@@ -336,15 +347,6 @@ export class TestingBotMcpServer {
   }
 }
 
-// Converts a tool's Zod shape (`{ arg: z.string(), ... }`) to the JSON Schema
-// object MCP expects as `inputSchema`. Inline everything ($refStrategy none):
-// MCP clients do not resolve $ref, and a reused sub-schema would otherwise be
-// emitted as a reference to a definition that is not part of the payload.
-export function toolInputSchema(shape: Record<string, any> | undefined): any {
-  const converted: any = zodToJsonSchema(z.object(shape ?? {}), {
-    target: "jsonSchema7",
-    $refStrategy: "none",
-  });
-  delete converted.$schema;
-  return converted;
-}
+// Shared with @testingbot/automation-mcp: one Zod → JSON Schema conversion for
+// every tool this server lists, and the same argument checks.
+export { toolInputSchema };

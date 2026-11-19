@@ -312,7 +312,7 @@ export default function addMaestroTools(
         .optional()
         .describe("A name for this test run, shown in the TestingBot dashboard"),
       env: z
-        .record(z.string())
+        .record(z.string(), z.string())
         .optional()
         .describe("Environment variables passed to the Maestro flows"),
       includeTags: z
