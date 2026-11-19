@@ -524,6 +524,25 @@ Start a run. Returns immediately with the run ID.
 #### `getAppAutomateRunStatus` / `getAppAutomateRunResults`
 Poll run progress, then fetch per-run outcomes and the JUnit XML report. Each run's Appium session ID is surfaced, so `getTestDetails` / `getFailureLogs` work for logs and video.
 
+### Accessibility Testing
+
+Results of scheduled [accessibility scans](https://testingbot.com/support/accessibility), scored like the dashboard: WCAG A/AA violations decide pass/fail; needs-review items and best-practice recommendations do not. Automated checks cover only part of WCAG.
+
+#### `getAccessibilityTests`
+Scheduled accessibility tests with their latest result. **Parameters:** `offset`, `limit` (optional)
+
+#### `getAccessibilityRuns`
+Scans of one test, newest first. **Parameters:** `testId`, `offset`, `limit`
+
+#### `getAccessibilityFindings`
+Failing rules with the elements (selector, HTML, how to fix) and what is new or resolved since the previous scan. **Parameters:** `runId`, `elementsPerRule` (optional, default 5)
+
+**Example prompt:**
+> "What accessibility issues does our checkout page have, and which are new since the last scan?"
+
+#### `runAccessibilityTest`
+Start a scan now. **Parameters:** `testId`
+
 ### Screenshot Testing
 
 #### `takeScreenshot`
