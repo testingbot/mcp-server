@@ -49,7 +49,7 @@ export default function addLogTools(server: any, testingBotApi: any, _config: Te
 
   tools.getFailureLogs = server.tool(
     "getFailureLogs",
-    "Fetch and return session log file content (selenium, browser, chrome, vm, appium) for a test by session ID. Use this to debug failures — pass failuresOnly=true to extract only error/exception/stack-trace lines.",
+    "Download a test's log files (selenium, browser console, chrome, vm, appium) and return their text, one section per log. Read-only. Use it to see the raw evidence of why a test failed; `failuresOnly: true` keeps only error, exception and stack-trace lines with one line of context. Each log is cut to its last `maxBytesPerLog` bytes. For an explanation instead of raw logs use analyzeTestFailure.",
     {
       sessionId: z.string().min(1).describe("The session ID of the test"),
       logTypes: z

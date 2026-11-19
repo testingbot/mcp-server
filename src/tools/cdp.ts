@@ -8,7 +8,7 @@ export default function addCdpTools(server: any, testingBotApi: any, _config: Te
 
   tools.createCdpSession = server.tool(
     "createCdpSession",
-    "Create a remote browser session on TestingBot and get its CDP (Chrome DevTools Protocol) URL for direct browser control. Use this to automate browsers via CDP clients like Puppeteer or Playwright.",
+    "Start a remote browser on TestingBot and return its Chrome DevTools Protocol (CDP) WebSocket URL, for connecting your own Puppeteer or Playwright script to it. Starts a billed session that runs until the script closes the browser or it times out. For the agent itself to drive a browser, use tb_openBrowser instead. Pick valid `browserName` / `platform` values with getBrowsers.",
     {
       browserName: z.string().describe("Browser name (chrome, firefox, edge, safari)"),
       browserVersion: z

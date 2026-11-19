@@ -57,7 +57,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.2",
-    "@testingbot/automation-mcp": "^0.2.1",
+    "@testingbot/automation-mcp": "^0.2.2",
     "dotenv": "^16.4.5",
     "fflate": "^0.8.3",
     "pino": "^9.6.0",

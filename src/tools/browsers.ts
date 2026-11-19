@@ -12,7 +12,7 @@ export default function addBrowserTools(
 
   tools.getBrowsers = server.tool(
     "getBrowsers",
-    "Get list of available browsers and platforms for testing. Optionally filter by type (web or mobile).",
+    'List the browsers, versions and platforms (and mobile emulators/simulators, with their browser ID) that TestingBot can run automated tests on. Read-only. Use it to pick valid `browserName` / `platform` / `version` values for tb_openBrowser, createCdpSession or takeScreenshot. `type: "web"` returns desktop browsers only, `"mobile"` only emulators and simulators. Physical devices are listed by getDevices.',
     {
       type: z.enum(["web", "mobile"]).optional().describe("Filter browsers by type"),
     },
@@ -20,7 +20,14 @@ export default function addBrowserTools(
       try {
         logger.info({ type: args.type }, "Fetching browsers");
 
-        const browsers = await testingBotApi.getBrowsers(args.type);
+        // The API's own `type` parameter is the automation protocol
+        // (webdriver / rc), not web vs mobile, and rejects these values. Fetch
+        // the WebDriver catalog and filter here: mobile entries name a device.
+        const catalog = await testingBotApi.getBrowsers();
+        const browsers =
+          Array.isArray(catalog) && args.type
+            ? catalog.filter((b: any) => Boolean(b.deviceName) === (args.type === "mobile"))
+            : catalog;
 
         let formattedOutput = "## Available Browsers\n\n";
 
@@ -29,8 +36,12 @@ export default function addBrowserTools(
             formattedOutput += `### ${browser.name || browser.browserName}\n`;
             formattedOutput += `- **Platform**: ${browser.platform || browser.os}\n`;
             formattedOutput += `- **Version**: ${browser.version || browser.browserVersion}\n`;
-            if (browser.device) {
-              formattedOutput += `- **Device**: ${browser.device}\n`;
+            const device = browser.deviceName || browser.device;
+            if (device) {
+              formattedOutput += `- **Device**: ${device}\n`;
+            }
+            if (browser.browser_id) {
+              formattedOutput += `- **Browser ID**: ${browser.browser_id}\n`;
             }
             formattedOutput += "\n";
           });
@@ -54,7 +65,7 @@ export default function addBrowserTools(
 
   tools.getDevices = server.tool(
     "getDevices",
-    "Get list of available mobile devices for testing (real devices and simulators).",
+    "List TestingBot's physical (real) mobile devices with their ID, name, platform, OS version and whether each is available right now. Read-only. Use it before requesting a real device (e.g. `realDevice: true` in tb_openBrowser or runMaestroTest) to choose a device that exists and is free. Emulators and simulators are listed by getBrowsers.",
     {},
     async () => {
       try {

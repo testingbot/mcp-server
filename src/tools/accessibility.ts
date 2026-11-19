@@ -109,7 +109,7 @@ export default function addAccessibilityTools(
 
   tools.getAccessibilityTests = server.tool(
     "getAccessibilityTests",
-    "List the account's scheduled accessibility tests (each scans one URL) with their latest result.",
+    "List the account's scheduled accessibility tests (each scans one URL on a schedule), with each test's name, ID, URL, whether it is paused, and its latest run. Read-only. Start here to find a `testId`; then use getAccessibilityRuns for a test's scan history, getAccessibilityFindings for what failed, or runAccessibilityTest to scan now. Paginate with `offset` / `limit` (max 100).",
     {
       offset: intArg(0, 100000).optional().default(0).describe("Skip this many tests."),
       limit: intArg(1, 100).optional().default(20).describe("Number of tests (max 100)."),
@@ -139,7 +139,7 @@ export default function addAccessibilityTools(
 
   tools.getAccessibilityRuns = server.tool(
     "getAccessibilityRuns",
-    "List the scans of one accessibility test, newest first, with score and issue counts.",
+    "List the scans (runs) of one accessibility test, newest first, with each run's ID, score and issue counts. Read-only. Get `testId` from getAccessibilityTests. Use it to see whether a page got better or worse over time, or to find the `runId` to pass to getAccessibilityFindings. After runAccessibilityTest, poll this until the new run appears.",
     {
       testId: intArg(1, Number.MAX_SAFE_INTEGER).describe("ID of the accessibility test."),
       offset: intArg(0, 100000).optional().default(0).describe("Skip this many runs."),
@@ -170,7 +170,7 @@ export default function addAccessibilityTools(
 
   tools.getAccessibilityFindings = server.tool(
     "getAccessibilityFindings",
-    "Read the findings of an accessibility scan: failing WCAG A/AA rules with the elements (CSS selector, HTML, how to fix), checks that need human review, best-practice recommendations, and what is new or resolved since the previous scan.",
+    "Show what an accessibility scan found: failing WCAG A/AA rules with the failing elements (CSS selector, HTML snippet, how to fix), checks that need human review, best-practice recommendations, and which issues are new or resolved since the previous scan. Read-only. Get `runId` from getAccessibilityRuns. Use it to fix issues; `elementsPerRule` (default 5, max 50) controls how many elements are listed per rule.",
     {
       runId: intArg(1, Number.MAX_SAFE_INTEGER).describe("ID of the accessibility run."),
       elementsPerRule: intArg(0, 50)
@@ -194,7 +194,7 @@ export default function addAccessibilityTools(
 
   tools.runAccessibilityTest = server.tool(
     "runAccessibilityTest",
-    "Start a scan of a scheduled accessibility test now (like Run now in the dashboard). Poll getAccessibilityRuns for the new run.",
+    "Start a scan of a scheduled accessibility test right now, the same as Run now in the dashboard, instead of waiting for its schedule. Get `testId` from getAccessibilityTests. Returns as soon as the scan is queued, without results; poll getAccessibilityRuns until the new run appears, then read it with getAccessibilityFindings. Each call starts another scan.",
     {
       testId: intArg(1, Number.MAX_SAFE_INTEGER).describe("ID of the accessibility test."),
     },

@@ -109,7 +109,7 @@ export default function addVisualTools(server: any, testingBotApi: any, _config:
 
   tools.getVisualTests = server.tool(
     "getVisualTests",
-    "List the account's hosted visual regression tests (id, name, URL, browsers, paused).",
+    "List the account's hosted visual regression tests with each test's ID, name, URL, browsers and whether it is paused. Read-only. Use it to find a `testId`, then getVisualRuns for its results. To review what changed in a run use explainVisualRun.",
     {
       offset: intArg(0, 100000).optional().default(0).describe("Skip this many tests."),
       limit: intArg(1, 100).optional().default(20).describe("Number of tests (max 100)."),
@@ -137,7 +137,7 @@ export default function addVisualTools(server: any, testingBotApi: any, _config:
 
   tools.getVisualRuns = server.tool(
     "getVisualRuns",
-    "List visual runs (one browser's screenshot compared with its baseline), newest first. Use state=unreviewed to find failed runs nobody has rejected yet.",
+    "List visual runs (one browser's screenshot compared with its baseline), newest first, with each run's ID, name, browser, verdict, percentage of pixels changed versus its threshold, date and run page link. Read-only. Filter by `testId` (from getVisualTests) or `state`; `state: \"unreviewed\"` finds failed runs nobody has approved or rejected yet. Then use explainVisualRun on a run, and reviewVisualRun to approve or reject it.",
     {
       testId: intArg(1, Number.MAX_SAFE_INTEGER)
         .optional()
@@ -165,7 +165,7 @@ export default function addVisualTools(server: any, testingBotApi: any, _config:
 
   tools.explainVisualRun = server.tool(
     "explainVisualRun",
-    "Explain what changed in a visual run: each changed region with what it is, an AI description of the change when the account has AI region names on, text and CSS changes from the page, plus links to the screenshot, baseline and diff images. Read-only.",
+    "Explain what changed in one visual run: each changed region and what it is, an AI description of the change when the account has AI region names on, text and CSS changes from the page, and links to the screenshot, baseline and diff images. Read-only and free. Get `runId` from getVisualRuns. Use it before reviewVisualRun to decide whether a change is intended.",
     {
       runId: intArg(1, Number.MAX_SAFE_INTEGER).describe("ID of the visual run."),
     },
@@ -184,7 +184,7 @@ export default function addVisualTools(server: any, testingBotApi: any, _config:
 
   tools.reviewVisualRun = server.tool(
     "reviewVisualRun",
-    "Approve or reject a visual run, the same as on its run page. Approving with makeBaseline=true also makes its screenshot the new baseline for that browser. Only do this when the user asked you to.",
+    "Approve or reject a visual run, the same as on its run page in the dashboard. Approve when the change is intended, reject when it is a regression. With `makeBaseline: true`, approving also replaces that browser's baseline screenshot with this one, so later runs compare against it. Only call it when the user asked you to; review the change with explainVisualRun first. Get `runId` from getVisualRuns. Returns the updated run.",
     {
       runId: intArg(1, Number.MAX_SAFE_INTEGER).describe("ID of the visual run."),
       decision: z

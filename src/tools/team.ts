@@ -79,7 +79,7 @@ export default function addTeamTools(server: any, testingBotApi: any, _config: T
 
   tools.getUsersInTeam = server.tool(
     "getUsersInTeam",
-    "Get a list of all users in your team with their roles and permissions.",
+    "List the members of the account's TestingBot team with each user's ID, email, plan, roles, read-only flag and concurrency limit. Read-only. Use it to find a `userId` for getUserFromTeam, or to see who has access. For plan and concurrency of the whole team use getTeam.",
     {},
     async () => {
       try {
@@ -149,7 +149,7 @@ export default function addTeamTools(server: any, testingBotApi: any, _config: T
 
   tools.getUserFromTeam = server.tool(
     "getUserFromTeam",
-    "Retrieve detailed information about a specific user in your team by their user ID.",
+    "Show one team member's details: name, email, role, whether the account is active, join date and last login. Read-only. Get `userId` from getUsersInTeam. For your own account use getUserInfo; for team-wide settings use getTeam. Returns an error if the user is not in your team.",
     {
       userId: z
         .union([z.number(), z.string().transform(Number)])

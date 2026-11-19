@@ -103,7 +103,7 @@ export default function addStorageTools(
 
   tools.uploadFile = server.tool(
     "uploadFile",
-    "Upload a local file (APK, IPA, or ZIP) to TestingBot storage for mobile app testing. Returns an app_url for use in tests.",
+    "Upload a local app file (.apk, .ipa or .zip) to TestingBot storage and return its `tb://` app URL, to use as `appium:app` in a native-app session (appium_session_management). Each call stores a new copy; list existing uploads with getStorageFiles to reuse one. For a file on the web use uploadRemoteFile; Maestro and Espresso/XCUITest have their own upload tools.",
     {
       localFilePath: z.string().describe("Local path to the file to upload"),
     },
@@ -130,7 +130,7 @@ export default function addStorageTools(
 
   tools.uploadRemoteFile = server.tool(
     "uploadRemoteFile",
-    "Upload a file from a remote URL to TestingBot storage. The file will be downloaded from the URL and stored.",
+    "Have TestingBot download an app file (.apk, .ipa or .zip) from a public http(s) URL into its storage, and return its `tb://` app URL for `appium:app`. Use it when the build is on a web server or CI artifact URL instead of this machine (for local files use uploadFile). The URL must be reachable from the internet without login. Each call stores a new copy.",
     {
       remoteUrl: z.string().url().describe("Remote URL of the file to upload"),
     },
@@ -158,7 +158,7 @@ export default function addStorageTools(
 
   tools.getStorageFiles = server.tool(
     "getStorageFiles",
-    "List all files in TestingBot storage with pagination.",
+    "List the app files in the account's TestingBot storage, newest first, with each file's name, `tb://` app URL, type, version and upload time. Read-only. Use it to reuse an uploaded app instead of uploading it again, or to find the app URL for deleteStorageFile. Paginate with `offset` / `limit` (default 10, max 100).",
     {
       offset: z
         .union([z.number(), z.string().transform(Number)])
@@ -217,7 +217,7 @@ export default function addStorageTools(
 
   tools.deleteStorageFile = server.tool(
     "deleteStorageFile",
-    "Delete a file from TestingBot storage using its app_url.",
+    "Permanently delete an uploaded app file from TestingBot storage. Sessions and runs that still reference its app URL will fail to install it. This cannot be undone; only call it when the user asked to delete that file. Get the exact `appUrl` (tb://...) from getStorageFiles. Returns a confirmation, or an error if no file has that URL.",
     {
       appUrl: z.string().describe("The app_url of the file to delete"),
     },

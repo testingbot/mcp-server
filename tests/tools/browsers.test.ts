@@ -53,19 +53,34 @@ describe("Browser Tools", () => {
       const tools = addBrowserTools(serverMock, testingBotApiMock, configMock);
       const result = await tools.getBrowsers.handler({});
 
-      expect(testingBotApiMock.getBrowsers).toHaveBeenCalledWith(undefined);
+      expect(testingBotApiMock.getBrowsers).toHaveBeenCalledWith();
       expect(result.content[0].text).toContain("chrome");
       expect(result.content[0].text).toContain("firefox");
       expect(result.content[0].text).toContain("WIN11");
     });
 
-    it("should filter browsers by type", async () => {
-      testingBotApiMock.getBrowsers.mockResolvedValue([]);
-
+    it("filters web vs mobile locally (the API's own type is the protocol)", async () => {
+      testingBotApiMock.getBrowsers.mockResolvedValue([
+        { name: "chrome", platform: "WIN11", version: "140" },
+        {
+          name: "chrome",
+          platform: "ANDROID",
+          version: "14.0",
+          deviceName: "Pixel 8",
+          browser_id: 5466,
+        },
+      ]);
       const tools = addBrowserTools(serverMock, testingBotApiMock, configMock);
-      await tools.getBrowsers.handler({ type: "mobile" });
 
-      expect(testingBotApiMock.getBrowsers).toHaveBeenCalledWith("mobile");
+      const mobile = (await tools.getBrowsers.handler({ type: "mobile" })).content[0].text;
+      expect(testingBotApiMock.getBrowsers).toHaveBeenCalledWith();
+      expect(mobile).toContain("Pixel 8");
+      expect(mobile).toContain("5466");
+      expect(mobile).not.toContain("WIN11");
+
+      const web = (await tools.getBrowsers.handler({ type: "web" })).content[0].text;
+      expect(web).toContain("WIN11");
+      expect(web).not.toContain("Pixel 8");
     });
 
     it("should handle errors gracefully", async () => {

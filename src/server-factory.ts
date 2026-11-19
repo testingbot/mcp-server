@@ -13,6 +13,7 @@ import { getPrompt, listPrompts } from "./prompts.js";
 import { RESOURCE_TEMPLATES, STATIC_RESOURCES, readResource } from "./resources.js";
 import { TestingBotConfig } from "./lib/types.js";
 import logger from "./lib/logger.js";
+import { TOOL_ANNOTATIONS } from "./lib/tool-annotations.js";
 import { createRequire } from "module";
 
 const require = createRequire(import.meta.url);
@@ -133,11 +134,21 @@ export class TestingBotMcpServer {
   // types, which must be converted: putting the Zod objects straight into
   // `properties` published their internals (`_def`, `~standard`) instead of
   // JSON Schema, so clients could neither validate nor prompt for arguments.
-  public listTools(): Array<{ name: string; description: string; inputSchema: any }> {
+  public listTools(): Array<{
+    name: string;
+    description: string;
+    inputSchema: any;
+    annotations?: unknown;
+  }> {
     return Object.values(this.tools).map((tool: any) => ({
       name: tool.name,
       description: tool.description,
       inputSchema: tool.inputSchema ?? toolInputSchema(tool.schema),
+      // Automation tools (tb_*, appium) carry their own; local ones come from
+      // TOOL_ANNOTATIONS.
+      ...((tool.annotations ?? TOOL_ANNOTATIONS[tool.name])
+        ? { annotations: tool.annotations ?? TOOL_ANNOTATIONS[tool.name] }
+        : {}),
     }));
   }
 

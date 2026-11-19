@@ -98,7 +98,7 @@ export default function addAppAutomateTools(
 
   tools.uploadAppAutomateTests = server.tool(
     "uploadAppAutomateTests",
-    "Upload the test suite for an App Automate project: the instrumented test APK for Espresso, or the zipped XCUITest runner bundle for XCUITest.",
+    "Upload the test suite for an Espresso or XCUITest project: the instrumented test APK for Espresso, or the zipped XCUITest runner bundle (.zip) for XCUITest. Call it after uploadAppAutomateApp, with the `projectId` it returned, and before runAppAutomateTest. Returns a confirmation; the project is then ready for runAppAutomateTest.",
     {
       framework: frameworkSchema,
       projectId: projectIdSchema.describe("Project ID returned by uploadAppAutomateApp"),
@@ -231,7 +231,7 @@ export default function addAppAutomateTools(
 
   tools.getAppAutomateRunStatus = server.tool(
     "getAppAutomateRunStatus",
-    "Get the status of Espresso/XCUITest run(s) for a project. Omit runId to list all runs. Statuses: WAITING, READY (running), DONE, FAILED.",
+    "Check whether an Espresso or XCUITest run has finished: returns each run's status (WAITING, READY = running, DONE, FAILED) and device. Read-only. Poll it every 10-15 seconds after runAppAutomateTest, then call getAppAutomateRunResults once the runs are DONE or FAILED. Omit `runId` to list all runs of the project.",
     {
       framework: frameworkSchema,
       projectId: projectIdSchema.describe("Project ID"),
@@ -269,7 +269,7 @@ export default function addAppAutomateTools(
 
   tools.getAppAutomateRunResults = server.tool(
     "getAppAutomateRunResults",
-    "Get the results of a completed Espresso/XCUITest project: per-run outcomes plus the JUnit XML report. For XCUITest, pass runId for a single run's report.",
+    "Get the results of a finished Espresso or XCUITest project: each run's outcome plus the JUnit XML report with per-test results. Read-only. Call it once getAppAutomateRunStatus shows every run as DONE or FAILED; while runs are still going it reports them as STILL RUNNING. For XCUITest, pass `runId` to get one run's report.",
     {
       framework: frameworkSchema,
       projectId: projectIdSchema.describe("Project ID"),

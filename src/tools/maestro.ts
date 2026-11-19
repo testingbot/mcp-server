@@ -406,7 +406,7 @@ export default function addMaestroTools(
 
   tools.getMaestroRunStatus = server.tool(
     "getMaestroRunStatus",
-    "Get the status of Maestro run(s) for a project. Omit runId to list all runs of the latest execution. Statuses: WAITING, READY (running), DONE, FAILED, CANCELLED.",
+    "Check whether a Maestro run has finished: returns each run's status (WAITING, READY = running, DONE, FAILED, CANCELLED), device and flow results so far. Read-only. Poll it every 10-15 seconds after runMaestroTest until the status is DONE, FAILED or CANCELLED, then call getMaestroRunResults. Omit `runId` to see all runs of the project's latest execution.",
     {
       projectId: z
         .union([z.number(), z.string().transform(Number)])
@@ -450,7 +450,7 @@ export default function addMaestroTools(
 
   tools.getMaestroRunResults = server.tool(
     "getMaestroRunResults",
-    "Get the final results of a completed Maestro run: per-flow outcomes (failures first, with error messages and video links) plus the JUnit XML report.",
+    "Get the final results of a finished Maestro run: each flow's outcome (failures first, with error messages and video links) plus the JUnit XML report. Read-only. Call it once getMaestroRunStatus shows DONE or FAILED. Get `projectId` and `runId` from runMaestroTest or listMaestroRuns. For one flow's step-by-step details use getMaestroFlowDetails.",
     {
       projectId: z
         .union([z.number(), z.string().transform(Number)])
@@ -518,7 +518,7 @@ export default function addMaestroTools(
 
   tools.listMaestroProjects = server.tool(
     "listMaestroProjects",
-    "List Maestro projects on the account (newest first): app details, flow names, and run IDs. Use this to find an existing projectId instead of re-uploading an app.",
+    "List the account's Maestro projects, newest first, with the app details, flow names and run IDs of each. Read-only. Use it to reuse an existing `projectId` instead of uploading the app again, or to find runs to inspect. Paginate with `offset` / `count` (default 10, max 100).",
     {
       offset: z
         .union([z.number(), z.string().transform(Number)])
@@ -704,7 +704,7 @@ export default function addMaestroTools(
 
   tools.cancelMaestroRun = server.tool(
     "cancelMaestroRun",
-    "Cancel a running Maestro run.",
+    "Stop a Maestro run that is still waiting or running, releasing its devices. Flows that have not finished are not run, and the run ends as CANCELLED. Cannot be undone, but the run can be started again with retryMaestroRun. Get `projectId` and `runId` from runMaestroTest or listMaestroRuns. Returns a confirmation, or the API's error (e.g. for a run that already finished).",
     {
       projectId: z
         .union([z.number(), z.string().transform(Number)])
@@ -727,7 +727,7 @@ export default function addMaestroTools(
 
   tools.retryMaestroRun = server.tool(
     "retryMaestroRun",
-    "Retry a Maestro run, or a single failed flow within it when flowId is given.",
+    "Run a finished Maestro run again on the same app and flows, or only one failed flow when `flowId` is given (get it from getMaestroRunStatus). Use it after fixing a flaky failure or a backend issue; when the flows or app changed, upload them and call runMaestroTest instead. It uses device time again, and returns as soon as the retry is queued; poll getMaestroRunStatus for the result.",
     {
       projectId: z
         .union([z.number(), z.string().transform(Number)])
