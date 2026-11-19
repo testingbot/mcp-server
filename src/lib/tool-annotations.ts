@@ -48,8 +48,6 @@ export const TOOL_ANNOTATIONS: Record<string, ToolAnnotations> = {
 
   // Live sessions: only build a dashboard link; the user presses Start.
   startLiveSession: { ...READ, title: "Link to a live session" },
-  startDesktopLiveSession: { ...READ, title: "Link to a desktop live session" },
-  startMobileLiveSession: { ...READ, title: "Link to a mobile live session" },
 
   // Remote browser for the user's own CDP client: starts a billed session.
   createCdpSession: { ...WRITE, title: "Start a browser for CDP" },
