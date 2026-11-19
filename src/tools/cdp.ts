@@ -22,7 +22,7 @@ export default function addCdpTools(server: any, testingBotApi: any, _config: Te
       name: z.string().optional().describe("Session name for identification"),
       build: z.string().optional().describe("Build identifier"),
       extraCapabilities: z
-        .record(z.any())
+        .record(z.string(), z.any())
         .optional()
         .describe("Additional capabilities as key-value pairs"),
     },

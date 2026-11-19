@@ -15,7 +15,6 @@ import { TestingBotConfig } from "./lib/types.js";
 import logger from "./lib/logger.js";
 import { createRequire } from "module";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 const require = createRequire(import.meta.url);
 const packageJson = require("../package.json");
@@ -337,14 +336,50 @@ export class TestingBotMcpServer {
 }
 
 // Converts a tool's Zod shape (`{ arg: z.string(), ... }`) to the JSON Schema
-// object MCP expects as `inputSchema`. Inline everything ($refStrategy none):
+// object MCP expects as `inputSchema`. Inline everything (reused: "inline"):
 // MCP clients do not resolve $ref, and a reused sub-schema would otherwise be
 // emitted as a reference to a definition that is not part of the payload.
+// io: "input" describes what a client sends, so `.default()` params are
+// optional. unrepresentable: "any" keeps a schema JSON Schema cannot express
+// (a custom check, say) from failing the whole tools/list.
 export function toolInputSchema(shape: Record<string, any> | undefined): any {
-  const converted: any = zodToJsonSchema(z.object(shape ?? {}), {
-    target: "jsonSchema7",
-    $refStrategy: "none",
+  const converted: any = z.toJSONSchema(z.object(shape ?? {}), {
+    target: "draft-7",
+    io: "input",
+    reused: "inline",
+    unrepresentable: "any",
+    override: keepPipeLimitsAndDefaults,
   });
   delete converted.$schema;
   return converted;
+}
+
+// zod 4's input mode drops things agents relied on with zod-to-json-schema:
+// - a pipe such as `z.union([z.number(), z.string().transform(Number)])
+//   .pipe(z.number().min(1).max(100))` shows only its input side, so the
+//   limits disappear. Emit `allOf: [input, output]`, as zod-to-json-schema did.
+// - `.default()` behind such a pipe loses its `default`. Put it back.
+function keepPipeLimitsAndDefaults(ctx: { zodSchema: any; jsonSchema: any }): void {
+  const def = ctx.zodSchema._zod.def;
+  // A bare transform is also a pipe internally; its output side says nothing.
+  if (def.type === "pipe" && def.out._zod.def.type !== "transform") {
+    const output: any = z.toJSONSchema(def.out, {
+      target: "draft-7",
+      io: "output",
+      unrepresentable: "any",
+    });
+    delete output.$schema;
+    const { description, ...input } = ctx.jsonSchema;
+    for (const key of Object.keys(ctx.jsonSchema)) delete ctx.jsonSchema[key];
+    if (description) ctx.jsonSchema.description = description;
+    ctx.jsonSchema.allOf = [input, output];
+  }
+  // Input mode leaves objects open; the tools have always advertised closed ones.
+  if (def.type === "object" && ctx.jsonSchema.additionalProperties === undefined) {
+    ctx.jsonSchema.additionalProperties = false;
+  }
+  if (def.type === "default" && ctx.jsonSchema.default === undefined) {
+    ctx.jsonSchema.default =
+      typeof def.defaultValue === "function" ? def.defaultValue() : def.defaultValue;
+  }
 }
