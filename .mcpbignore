@@ -53,3 +53,6 @@ node_modules/**/man/
 # Output of this script itself.
 releases/
 *.mcpb
+
+# Agent skill files (docs only, not used at runtime).
+skills/
