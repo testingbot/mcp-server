@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { z } from "zod";
 import { TestingBotMcpServer } from "../src/server-factory.js";
 
 describe("TestingBotMcpServer.preflight", () => {
@@ -146,5 +147,59 @@ describe("TestingBotMcpServer.handleToolCall (degraded-mode credential gate)", (
   it("throws for an unknown tool", async () => {
     const server = makeServer("k", "s");
     await expect(server.handleToolCall("nope", {})).rejects.toThrow(/Tool not found/);
+  });
+
+  it("rejects missing arguments with a clear message instead of calling the tool", async () => {
+    const server = makeServer("k", "s");
+    const handler = vi.fn();
+    server.tools.getTest = {
+      name: "getTest",
+      schema: { sessionId: z.string().describe("Session id") },
+      handler,
+    };
+
+    const res = await server.handleToolCall("getTest", {});
+
+    expect(res.isError).toBe(true);
+    expect(res.content[0].text).toBe(
+      "Invalid arguments for getTest: sessionId: expected string, received undefined"
+    );
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  it("passes parsed arguments, with defaults and coercions, to the tool", async () => {
+    const server = makeServer("k", "s");
+    const handler = vi.fn().mockResolvedValue({ content: [{ type: "text", text: "ok" }] });
+    server.tools.list = {
+      name: "list",
+      schema: {
+        limit: z
+          .union([z.number(), z.string().transform(Number)])
+          .pipe(z.number().min(1))
+          .optional()
+          .default(10),
+        offset: z.union([z.number(), z.string().transform(Number)]).optional(),
+      },
+      handler,
+    };
+
+    await server.handleToolCall("list", { offset: "20" });
+
+    expect(handler).toHaveBeenCalledWith({ limit: 10, offset: 20 });
+  });
+
+  it("leaves proxied tools (raw JSON Schema) to check their own arguments", async () => {
+    const server = makeServer("k", "s");
+    const handler = vi.fn().mockResolvedValue({ content: [] });
+    server.tools.appium_gesture = {
+      name: "appium_gesture",
+      schema: {},
+      inputSchema: { type: "object" },
+      handler,
+    };
+
+    await server.handleToolCall("appium_gesture", { anything: 1 });
+
+    expect(handler).toHaveBeenCalledWith({ anything: 1 });
   });
 });

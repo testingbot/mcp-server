@@ -14,7 +14,6 @@ import { RESOURCE_TEMPLATES, STATIC_RESOURCES, readResource } from "./resources.
 import { TestingBotConfig } from "./lib/types.js";
 import logger from "./lib/logger.js";
 import { createRequire } from "module";
-import { z } from "zod";
 
 const require = createRequire(import.meta.url);
 const packageJson = require("../package.json");
@@ -38,7 +37,13 @@ import addProjectTools from "./tools/project.js";
 import addMaestroTools from "./tools/maestro.js";
 import addAppAutomateTools from "./tools/app-automate.js";
 import addAuthTools from "./tools/auth.js";
-import { addAutomationTools, type AutomationHandle } from "@testingbot/automation-mcp";
+import {
+  addAutomationTools,
+  invalidArgsResult,
+  parseToolArgs,
+  toolInputSchema,
+  type AutomationHandle,
+} from "@testingbot/automation-mcp";
 
 export class TestingBotMcpServer {
   public server: McpServer;
@@ -160,7 +165,14 @@ export class TestingBotMcpServer {
       };
     }
 
-    return tool.handler(toolArgs);
+    // Proxied tools (appium-mcp) carry a raw JSON Schema and check their own
+    // arguments. Local tools are parsed against their Zod shape, so a missing
+    // or wrong argument comes back as a clear message instead of a crash
+    // inside the handler, and handlers get defaults and coercions applied.
+    if (tool.inputSchema) return tool.handler(toolArgs);
+    const parsed = parseToolArgs(tool.schema, toolArgs);
+    if (!parsed.success) return invalidArgsResult(toolName, parsed.message);
+    return tool.handler(parsed.data);
   }
 
   private hasCredentials(): boolean {
@@ -335,51 +347,6 @@ export class TestingBotMcpServer {
   }
 }
 
-// Converts a tool's Zod shape (`{ arg: z.string(), ... }`) to the JSON Schema
-// object MCP expects as `inputSchema`. Inline everything (reused: "inline"):
-// MCP clients do not resolve $ref, and a reused sub-schema would otherwise be
-// emitted as a reference to a definition that is not part of the payload.
-// io: "input" describes what a client sends, so `.default()` params are
-// optional. unrepresentable: "any" keeps a schema JSON Schema cannot express
-// (a custom check, say) from failing the whole tools/list.
-export function toolInputSchema(shape: Record<string, any> | undefined): any {
-  const converted: any = z.toJSONSchema(z.object(shape ?? {}), {
-    target: "draft-7",
-    io: "input",
-    reused: "inline",
-    unrepresentable: "any",
-    override: keepPipeLimitsAndDefaults,
-  });
-  delete converted.$schema;
-  return converted;
-}
-
-// zod 4's input mode drops things agents relied on with zod-to-json-schema:
-// - a pipe such as `z.union([z.number(), z.string().transform(Number)])
-//   .pipe(z.number().min(1).max(100))` shows only its input side, so the
-//   limits disappear. Emit `allOf: [input, output]`, as zod-to-json-schema did.
-// - `.default()` behind such a pipe loses its `default`. Put it back.
-function keepPipeLimitsAndDefaults(ctx: { zodSchema: any; jsonSchema: any }): void {
-  const def = ctx.zodSchema._zod.def;
-  // A bare transform is also a pipe internally; its output side says nothing.
-  if (def.type === "pipe" && def.out._zod.def.type !== "transform") {
-    const output: any = z.toJSONSchema(def.out, {
-      target: "draft-7",
-      io: "output",
-      unrepresentable: "any",
-    });
-    delete output.$schema;
-    const { description, ...input } = ctx.jsonSchema;
-    for (const key of Object.keys(ctx.jsonSchema)) delete ctx.jsonSchema[key];
-    if (description) ctx.jsonSchema.description = description;
-    ctx.jsonSchema.allOf = [input, output];
-  }
-  // Input mode leaves objects open; the tools have always advertised closed ones.
-  if (def.type === "object" && ctx.jsonSchema.additionalProperties === undefined) {
-    ctx.jsonSchema.additionalProperties = false;
-  }
-  if (def.type === "default" && ctx.jsonSchema.default === undefined) {
-    ctx.jsonSchema.default =
-      typeof def.defaultValue === "function" ? def.defaultValue() : def.defaultValue;
-  }
-}
+// Shared with @testingbot/automation-mcp: one Zod → JSON Schema conversion for
+// every tool this server lists, and the same argument checks.
+export { toolInputSchema };
