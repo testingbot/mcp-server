@@ -195,7 +195,7 @@ The agent calls `startTunnel`, which needs **Java 17+**. The tool returns the tu
 | --- | --- |
 | `tb_openBrowser` (agent-driven browser) | `tunnelIdentifier` (**required**: sessions without it go direct). Or set `TESTINGBOT_TUNNEL_IDENTIFIER` |
 | `appium_session_management` (native apps) | `"tb:options": {"tunnel-identifier": "…"}` in the capabilities |
-| `startLiveSession` / `startDesktopLiveSession` / `startMobileLiveSession` | `tunnelId` (the numeric ID) |
+| `startLiveSession` | `tunnelId` (the numeric ID) |
 | `runMaestroTest` | `tunnelIdentifier`. Without it, the account's newest running tunnel is used |
 | `takeScreenshot`, `runAppAutomateTest` (Espresso / XCUITest) | The account's newest running tunnel is used automatically |
 
@@ -224,32 +224,7 @@ Start an interactive live testing session on TestingBot. Returns a link that ope
 > "Start a live testing session on Chrome latest with Windows 11 for https://example.com"
 > "Open https://myapp.com on iPhone 14 with iOS 16 for manual testing"
 
-#### `startDesktopLiveSession`
-Convenience tool to start a desktop browser live testing session.
-
-**Parameters:**
-- `desiredURL`: The URL to open
-- `desiredOS`: Windows, Mac, or Linux
-- `desiredOSVersion`: OS version
-- `desiredBrowser`: chrome, firefox, safari, edge, or ie
-- `desiredBrowserVersion` (optional): Browser version or "latest" (default: latest)
-- `tunnelId` (optional): Numeric ID of a running tunnel, for localhost / private URLs
-
-**Example prompt:**
-> "Start desktop live session on Firefox 120 with Mac Monterey for https://example.com"
-
-#### `startMobileLiveSession`
-Convenience tool to start a mobile device live testing session.
-
-**Parameters:**
-- `desiredURL`: The URL to open
-- `desiredOS`: android or ios
-- `desiredOSVersion`: OS version
-- `desiredDevice`: Device name
-- `tunnelId` (optional): Numeric ID of a running tunnel, for localhost / private URLs
-
-**Example prompt:**
-> "Start mobile live session on Galaxy S23 with Android 13 for https://example.com"
+`startDesktopLiveSession` and `startMobileLiveSession` are deprecated: `startLiveSession` covers both with `platformType`. They still work for now, but are no longer listed and will be removed in a later release.
 
 ### Browser & Device Management
 

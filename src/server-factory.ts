@@ -140,16 +140,19 @@ export class TestingBotMcpServer {
     inputSchema: any;
     annotations?: unknown;
   }> {
-    return Object.values(this.tools).map((tool: any) => ({
-      name: tool.name,
-      description: tool.description,
-      inputSchema: tool.inputSchema ?? toolInputSchema(tool.schema),
-      // Automation tools (tb_*, appium) carry their own; local ones come from
-      // TOOL_ANNOTATIONS.
-      ...((tool.annotations ?? TOOL_ANNOTATIONS[tool.name])
-        ? { annotations: tool.annotations ?? TOOL_ANNOTATIONS[tool.name] }
-        : {}),
-    }));
+    // Hidden tools are deprecated aliases: still callable, no longer listed.
+    return Object.values(this.tools)
+      .filter((tool: any) => !tool.hidden)
+      .map((tool: any) => ({
+        name: tool.name,
+        description: tool.description,
+        inputSchema: tool.inputSchema ?? toolInputSchema(tool.schema),
+        // Automation tools (tb_*, appium) carry their own; local ones come from
+        // TOOL_ANNOTATIONS.
+        ...((tool.annotations ?? TOOL_ANNOTATIONS[tool.name])
+          ? { annotations: tool.annotations ?? TOOL_ANNOTATIONS[tool.name] }
+          : {}),
+      }));
   }
 
   // Dispatch a single tool call, applying the degraded-mode credential gate.

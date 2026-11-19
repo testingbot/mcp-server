@@ -455,5 +455,12 @@ export default function addLiveTools(server: any, testingBotApi: any, _config: T
     }
   );
 
+  // Deprecated aliases: startLiveSession covers both with platformType. Kept
+  // callable for existing prompts and agent configs, but no longer listed, so
+  // agents see one live-session tool. Remove in a later release.
+  for (const alias of ["startDesktopLiveSession", "startMobileLiveSession"]) {
+    if (tools[alias] && typeof tools[alias] === "object") tools[alias].hidden = true;
+  }
+
   return tools;
 }

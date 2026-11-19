@@ -188,6 +188,23 @@ describe("TestingBotMcpServer.handleToolCall (degraded-mode credential gate)", (
     expect(handler).toHaveBeenCalledWith({ limit: 10, offset: 20 });
   });
 
+  it("keeps hidden (deprecated alias) tools callable but out of tools/list", async () => {
+    const server = makeServer("k", "s");
+    const listed = server.listTools().map((tool) => tool.name);
+    expect(listed).toContain("startLiveSession");
+    expect(listed).not.toContain("startDesktopLiveSession");
+    expect(listed).not.toContain("startMobileLiveSession");
+
+    const res = await server.handleToolCall("startDesktopLiveSession", {
+      desiredURL: "https://example.com",
+      desiredOS: "Windows",
+      desiredOSVersion: "11",
+      desiredBrowser: "chrome",
+    });
+    expect(res.isError).toBeFalsy();
+    expect(res.content[0].text).toContain("browserName=chrome");
+  });
+
   it("leaves proxied tools (raw JSON Schema) to check their own arguments", async () => {
     const server = makeServer("k", "s");
     const handler = vi.fn().mockResolvedValue({ content: [] });
