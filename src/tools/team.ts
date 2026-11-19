@@ -8,7 +8,7 @@ export default function addTeamTools(server: any, testingBotApi: any, _config: T
 
   tools.getTeam = server.tool(
     "getTeam",
-    "Retrieve team settings and information including plan details, team size, and configuration.",
+    "Retrieve team settings: plan details, team size, and concurrency (parallel sessions allowed, running now, and queued waiting for a free slot, for VMs and physical devices). Check this before starting many sessions in parallel.",
     {},
     async () => {
       try {
@@ -36,25 +36,25 @@ export default function addTeamTools(server: any, testingBotApi: any, _config: T
           formattedOutput += `- **Max Parallel**: ${team.max_parallel}\n`;
         }
 
-        // Concurrency information
+        // Concurrency: plan caps, sessions running now and sessions waiting for a
+        // free slot (GET /v1/team-management; counts are team-wide, from the Hub).
         if (team.concurrency) {
           formattedOutput += `\n### Concurrency\n`;
-          if (team.concurrency.allowed) {
-            formattedOutput += `**Allowed**:\n`;
-            if (team.concurrency.allowed.vms !== undefined) {
-              formattedOutput += `- VMs: ${team.concurrency.allowed.vms}\n`;
+          const rows: Array<[string, { vms?: number; physical?: number } | undefined]> = [
+            ["Allowed", team.concurrency.allowed],
+            ["Running now", team.concurrency.current],
+            ["Queued (waiting for a free slot)", team.concurrency.queued],
+          ];
+          for (const [label, counts] of rows) {
+            if (!counts) {
+              continue;
             }
-            if (team.concurrency.allowed.physical !== undefined) {
-              formattedOutput += `- Physical: ${team.concurrency.allowed.physical}\n`;
+            formattedOutput += `**${label}**:\n`;
+            if (counts.vms !== undefined) {
+              formattedOutput += `- VMs: ${counts.vms}\n`;
             }
-          }
-          if (team.concurrency.current) {
-            formattedOutput += `**Current**:\n`;
-            if (team.concurrency.current.vms !== undefined) {
-              formattedOutput += `- VMs: ${team.concurrency.current.vms}\n`;
-            }
-            if (team.concurrency.current.physical !== undefined) {
-              formattedOutput += `- Physical: ${team.concurrency.current.physical}\n`;
+            if (counts.physical !== undefined) {
+              formattedOutput += `- Physical: ${counts.physical}\n`;
             }
           }
         }
