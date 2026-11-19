@@ -22,6 +22,7 @@ import addCdpTools from "./tools/cdp.js";
 import addTunnelTools from "./tools/tunnels.js";
 import { tunnelManager } from "./lib/tunnel-manager.js";
 import addLogTools from "./tools/logs.js";
+import addAiAnalysisTools from "./tools/ai-analysis.js";
 import addProjectTools from "./tools/project.js";
 import addMaestroTools from "./tools/maestro.js";
 import addAppAutomateTools from "./tools/app-automate.js";
@@ -172,6 +173,7 @@ export class TestingBotMcpServer {
       addCdpTools,
       addTunnelTools,
       addLogTools,
+      addAiAnalysisTools,
       addProjectTools,
       addMaestroTools,
       addAppAutomateTools,
