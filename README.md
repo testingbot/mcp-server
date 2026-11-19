@@ -10,7 +10,7 @@ TestingBot's official Model Context Protocol (MCP) server implementation. This s
 
 [![Install in VS Code](https://img.shields.io/badge/Install-VS_Code-007ACC?style=for-the-badge&logo=visualstudiocode&logoColor=white)](https://testingbot.com/mcp/install?client=vscode) [![Install in Cursor](https://img.shields.io/badge/Install-Cursor-000000?style=for-the-badge&logo=cursor&logoColor=white)](https://testingbot.com/mcp/install?client=cursor)
 
-**Claude Desktop**: download `mcp-server.mcpb` from the [releases page](https://github.com/testingbot/mcp-server/releases) and double-click it. Claude will set up the TestingBot MCP server automatically.
+**Claude Desktop**: download `testingbot-mcp-server-<version>.mcpb` from the [latest release](https://github.com/testingbot/mcp-server/releases/latest) and double-click it. Claude will set up the TestingBot MCP server automatically.
 
 After install, set your credentials from [TestingBot account settings](https://testingbot.com/members/user/security).
 
@@ -331,6 +331,27 @@ Stop a running test by session ID.
 **Example prompt:**
 > "Stop test abc123"
 
+### AI Failure Analysis
+
+Explanations from [TestingBot AI Insights](https://testingbot.com/support/ai/insights): summary, root cause, timeline, log evidence, suggested fixes, a failure category, the likely owner and a confidence score. The account owner must first enable **AI Analysis** in Account Settings, which records consent to sending curated, secret-masked test logs to TestingBot's AI provider; until then both tools say how to turn it on and nothing is sent.
+
+#### `analyzeTestFailure`
+Start (or reuse) an AI failure analysis of a finished test and wait for the result. A current analysis is returned without extra cost.
+
+**Parameters:**
+- `sessionId`: Session ID (or numeric test ID)
+- `force` (optional): Run a fresh analysis even if one exists
+- `waitSeconds` (optional): How long to wait for the result (default 90, 0 returns immediately)
+
+**Example prompt:**
+> "Why did test abc123 fail?"
+
+#### `getAiFailureAnalysis`
+Read an existing analysis. Never starts one.
+
+**Parameters:**
+- `sessionId`: Session ID (or numeric test ID)
+
 ### Build Management
 
 #### `getBuilds`
@@ -585,11 +606,12 @@ Update user account information.
 ### Team Management
 
 #### `getTeam`
-Get team information including concurrency limits, allowed parallel VMs, and mobile concurrency.
+Get team information including concurrency: parallel sessions allowed, running right now and queued (waiting for a free slot), for VMs and physical devices. Counts are team-wide and match the dashboard.
 
 **Example prompt:**
 > "Show my team information"
 > "What are my team's concurrency limits?"
+> "How many of my tests are running or queued right now?"
 
 #### `getUsersInTeam`
 List all users in your team with their roles and access levels.
@@ -666,6 +688,27 @@ Delete an active TestingBot tunnel by ID. This terminates the tunnel connection.
 
 **Example prompt:**
 > "Delete tunnel 12345"
+
+## Prompts, Resources and Agent Skills
+
+Besides tools, the server offers MCP **prompts**: task recipes your client can show as slash commands:
+
+| Prompt | Arguments | What it does |
+| --- | --- | --- |
+| `why-did-my-test-fail` | `sessionId` | Test status, AI failure analysis when enabled, failing log lines, likely cause and fixes |
+| `summarise-build` | `buildId` | Pass/fail counts, failures grouped by shared cause, what to fix first |
+| `find-flaky-tests` | `timeRange` (optional, default `30d`) | Tests that both passed and failed, and why each is unstable |
+
+and read-only **resources** a client can attach to a conversation:
+
+| URI | Content |
+| --- | --- |
+| `testingbot://tests/{sessionId}` | Test details (JSON) |
+| `testingbot://tests/{sessionId}/logs/{logType}` | One log file, last 200 KB (`selenium`, `browser`, `chrome`, `vm`, `appium`) |
+| `testingbot://builds/{buildId}` | Tests in a build (JSON) |
+| `testingbot://insights/flaky-tests` | Flaky tests over the last 30 days; `?time_range=7d` to change it |
+
+The same recipes ship as agent skills in [`skills/`](skills/) (one `SKILL.md` per task) for agents that load skills from files.
 
 ## Usage Examples
 
