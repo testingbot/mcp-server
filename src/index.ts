@@ -52,6 +52,11 @@ async function main() {
     void shutdown("uncaughtException", 1);
   });
 
+  // The client closing stdin means the session is over. Without this, open
+  // handles (API keep-alive sockets, a running tunnel) keep the process alive,
+  // which leaves orphaned processes behind and containers that never stop.
+  process.stdin.on("end", () => void shutdown("stdin closed"));
+
   await mcpServer.run();
 }
 
