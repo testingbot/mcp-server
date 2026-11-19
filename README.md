@@ -10,7 +10,7 @@ TestingBot's official Model Context Protocol (MCP) server implementation. This s
 
 [![Install in VS Code](https://img.shields.io/badge/Install-VS_Code-007ACC?style=for-the-badge&logo=visualstudiocode&logoColor=white)](https://testingbot.com/mcp/install?client=vscode) [![Install in Cursor](https://img.shields.io/badge/Install-Cursor-000000?style=for-the-badge&logo=cursor&logoColor=white)](https://testingbot.com/mcp/install?client=cursor)
 
-**Claude Desktop**: download `mcp-server.mcpb` from the [releases page](https://github.com/testingbot/mcp-server/releases) and double-click it. Claude will set up the TestingBot MCP server automatically.
+**Claude Desktop**: download `testingbot-mcp-server-<version>.mcpb` from the [latest release](https://github.com/testingbot/mcp-server/releases/latest) and double-click it. Claude will set up the TestingBot MCP server automatically.
 
 After install, set your credentials from [TestingBot account settings](https://testingbot.com/members/user/security).
 
