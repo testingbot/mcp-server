@@ -29,7 +29,7 @@ export default function addTestTools(server: any, testingBotApi: any, _config: T
 
   tools.getTests = server.tool(
     "getTests",
-    "Retrieve a list of recent tests with optional pagination. Returns test details including status, browser, platform, video and duration.",
+    "List the account's most recent tests (newest first) with each test's session ID, name, status, browser, platform, video link and duration. Read-only. Start here to find a `sessionId` for getTestDetails, getFailureLogs, analyzeTestFailure, updateTest or deleteTest. For the tests of one CI build use getTestsForBuild. Paginate with `offset` / `limit` (default 10, max 100).",
     {
       offset: z
         .union([z.number(), z.string().transform(Number)])
@@ -146,7 +146,7 @@ export default function addTestTools(server: any, testingBotApi: any, _config: T
 
   tools.getTestDetails = server.tool(
     "getTestDetails",
-    "Get detailed information about a specific test by session ID. Includes logs, screenshots, video URLs, and execution metadata.",
+    "Show everything recorded for one test: name, status and status message, browser, platform and device, duration, build, extra data, and links to the video, screenshots, log files and test page. Read-only. Get `sessionId` from getTests, getTestsForBuild or a tb_openBrowser session. To read the log contents use getFailureLogs; for an explanation of a failure use analyzeTestFailure.",
     {
       sessionId: z.string().describe("The session ID of the test"),
     },
@@ -283,7 +283,7 @@ export default function addTestTools(server: any, testingBotApi: any, _config: T
 
   tools.updateTest = server.tool(
     "updateTest",
-    "Update test metadata such as name, status (passed/failed), and other attributes. Useful for marking tests after execution.",
+    "Change a test's metadata on TestingBot: its name, pass/fail status, build, or extra data (a JSON string). Only the fields you pass are changed. Use it to report a test's outcome after it ran, since TestingBot can't tell whether the assertions passed, or to group it into a build. Get `sessionId` from getTests or tb_openBrowser.",
     {
       sessionId: z.string().describe("The session ID of the test to update"),
       name: z.string().optional().describe("New name for the test"),
@@ -326,7 +326,7 @@ export default function addTestTools(server: any, testingBotApi: any, _config: T
 
   tools.deleteTest = server.tool(
     "deleteTest",
-    "Delete a test by session ID. This permanently removes the test and its associated data.",
+    "Permanently delete one test and its video, logs and screenshots. This cannot be undone; only call it when the user asked to delete that test. Get `sessionId` from getTests. To end a test that is still running without deleting it use stopTest; to delete a whole build use deleteBuild. Returns a confirmation, or an error if no test has that ID.",
     {
       sessionId: z.string().describe("The session ID of the test to delete"),
     },
@@ -353,7 +353,7 @@ export default function addTestTools(server: any, testingBotApi: any, _config: T
 
   tools.stopTest = server.tool(
     "stopTest",
-    "Stop a running test by session ID. This terminates the test execution immediately.",
+    "End a test that is still running, immediately, as if the client had quit; the test is kept with its video and logs up to that point. Use it to stop a stuck or runaway session that is using minutes. Get `sessionId` from getTests (running tests) or tb_listSessions. To end a session this server opened, prefer tb_closeBrowser. Returns a confirmation.",
     {
       sessionId: z.string().describe("The session ID of the test to stop"),
     },

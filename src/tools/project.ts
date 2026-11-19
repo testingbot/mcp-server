@@ -549,7 +549,7 @@ export default function addProjectTools(
 
   tools.listTestFiles = server.tool(
     "listTestFiles",
-    "Scan a project directory and return test files for the detected framework. Read-only — never modifies files.",
+    "Find the test files in a local project: detects the framework (Playwright, Cypress, WebdriverIO, Selenium (JS), Nightwatch, Puppeteer, Jest, Mocha, Vitest, Maestro, Espresso or XCUITest) and returns the relative paths of its test files. Read-only and local: never changes files or calls TestingBot. Use it to see what can be run before setupTestingBot or runMaestroTest. Skips node_modules, build output and virtualenvs; limits with `maxDepth` / `maxResults`.",
     {
       projectRoot: z.string().min(1).describe("Absolute path to the project root to scan."),
       maxDepth: z

@@ -8,7 +8,7 @@ export default function addUserTools(server: any, testingBotApi: any, _config: T
 
   tools.getUserInfo = server.tool(
     "getUserInfo",
-    "Get current user account information including minutes used, plan details, and account status.",
+    "Show your own TestingBot account: name, email, company, plan, testing time left (seconds available) and concurrency limits for VMs and mobile devices. Read-only. Use it to check credentials work and whether enough minutes are left before starting tests. For other team members use getUsersInTeam; for team-wide concurrency use getTeam.",
     {},
     async () => {
       try {
@@ -64,7 +64,7 @@ export default function addUserTools(server: any, testingBotApi: any, _config: T
 
   tools.updateUserInfo = server.tool(
     "updateUserInfo",
-    "Update user account information such as name, email, or other profile details.",
+    "Change your own TestingBot account's first name, last name or email. Only the fields you pass are changed; changing the email changes where TestingBot sends account mail. Only call it when the user asked for the change. Team members' accounts can't be edited with this tool. Returns a confirmation, or the API's error for an invalid or taken email.",
     {
       firstName: z.string().optional().describe("First name"),
       lastName: z.string().optional().describe("Last name"),

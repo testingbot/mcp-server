@@ -8,7 +8,7 @@ export default function addBuildTools(server: any, testingBotApi: any, _config: 
 
   tools.getBuilds = server.tool(
     "getBuilds",
-    "Get a list of builds with optional pagination. Builds group related tests together.",
+    "List the account's builds (groups of tests that share a build name), newest first, with each build's name, ID, number of tests and creation date. Read-only. Use it to find a `buildId` for getTestsForBuild or deleteBuild. To list individual tests regardless of build, use getTests. Paginate with `offset` / `limit` (default 10, max 100).",
     {
       offset: z
         .union([z.number(), z.string().transform(Number)])
@@ -63,7 +63,7 @@ export default function addBuildTools(server: any, testingBotApi: any, _config: 
 
   tools.getTestsForBuild = server.tool(
     "getTestsForBuild",
-    "Get all tests associated with a specific build ID.",
+    "List every test in one build, with each test's session ID, status, browser, platform and duration. Read-only. Get `buildId` from getBuilds. Use it to review a CI run as a whole, e.g. to find the failed tests; then open a single test with getTestDetails, getFailureLogs or analyzeTestFailure.",
     {
       buildId: z
         .union([z.number(), z.string().transform(Number)])
@@ -110,7 +110,7 @@ export default function addBuildTools(server: any, testingBotApi: any, _config: 
 
   tools.deleteBuild = server.tool(
     "deleteBuild",
-    "Delete a build and all its associated tests by build ID.",
+    "Permanently delete a build and every test in it, including their videos, logs and screenshots. This cannot be undone; only call it when the user asked to delete that build. Get `buildId` from getBuilds and confirm it with getTestsForBuild first. To remove a single test use deleteTest instead. Returns a confirmation, or an error if the build does not exist.",
     {
       buildId: z
         .union([z.number(), z.string().transform(Number)])

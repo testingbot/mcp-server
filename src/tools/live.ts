@@ -257,7 +257,7 @@ export default function addLiveTools(server: any, testingBotApi: any, _config: T
 
   tools.startLiveSession = server.tool(
     "startLiveSession",
-    "Start an interactive live testing session on TestingBot. Returns a link that opens the session in the user's TestingBot dashboard (they confirm with Start). Supports desktop browsers (Chrome, Firefox, Safari, Edge, IE) and mobile emulators/simulators (Android, iOS). For localhost / private-network URLs, start a tunnel first (startTunnel) and pass its numeric ID as tunnelId.",
+    "Create a link that opens a live (manual, interactive) testing session in the user's TestingBot dashboard, for a person to test by hand. It starts nothing by itself: the user opens the link, checks the browser or device shown and presses Start. Works for desktop browsers and Android/iOS emulators; for agent-driven automation use tb_openBrowser instead. For localhost / private-network URLs, start a tunnel with startTunnel and pass its numeric ID as `tunnelId`. Returns the link and the chosen configuration.",
     {
       platformType: z
         .enum([PlatformType.Desktop, PlatformType.Mobile])
@@ -352,7 +352,7 @@ export default function addLiveTools(server: any, testingBotApi: any, _config: T
 
   tools.startDesktopLiveSession = server.tool(
     "startDesktopLiveSession",
-    "Convenience tool to start a desktop browser live testing session. Automatically sets platformType to 'desktop'. For localhost / private-network URLs, pass the tunnelId of a running tunnel (startTunnel).",
+    "Create a link that opens a live (manual) session in a desktop browser in the user's TestingBot dashboard; the same as startLiveSession with platformType 'desktop'. Starts nothing by itself: the user opens the link and presses Start. `desiredOS` + `desiredOSVersion` pick the platform (e.g. Windows 11, Mac Sonoma). For localhost / private-network URLs pass `tunnelId` from startTunnel. For agent-driven automation use tb_openBrowser instead.",
     {
       desiredURL: z.string().url().describe("The URL to open in the browser"),
       desiredOS: z
@@ -409,7 +409,7 @@ export default function addLiveTools(server: any, testingBotApi: any, _config: T
 
   tools.startMobileLiveSession = server.tool(
     "startMobileLiveSession",
-    "Convenience tool to start a live testing session on a mobile emulator/simulator. Automatically sets platformType to 'mobile'. For localhost / private-network URLs, pass the tunnelId of a running tunnel (startTunnel).",
+    "Create a link that opens a live (manual) session on an Android emulator or iOS simulator in the user's TestingBot dashboard; the same as startLiveSession with platformType 'mobile'. Starts nothing by itself: the user opens the link and presses Start. The device must exist in getBrowsers (type 'mobile'); if no emulator matches, the error lists the available versions. Real devices are started from the dashboard. For localhost / private-network URLs pass `tunnelId` from startTunnel.",
     {
       desiredURL: z.string().url().describe("The URL to open in the mobile browser"),
       desiredOS: z.enum(["android", "ios"]).describe("Mobile platform (android or ios)"),

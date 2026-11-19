@@ -12,7 +12,7 @@ export default function addScreenshotTools(
 
   tools.takeScreenshot = server.tool(
     "takeScreenshot",
-    "Take screenshots of a URL across multiple browsers and platforms. Returns a screenshot ID to retrieve results. localhost / private-network URLs are captured through the account's newest running TestingBot Tunnel — start one with startTunnel first.",
+    "Capture screenshots of one URL in several browsers and platforms at once, for a quick visual cross-browser check. Starts an asynchronous job on TestingBot and returns its screenshot ID right away; fetch the images with retrieveScreenshots after about a minute. Pick browsers with getBrowsers. localhost / private-network URLs go through the account's newest running tunnel; start one with startTunnel first, or the call is refused.",
     {
       url: z.string().url().describe("The URL to screenshot"),
       browsers: z
@@ -99,7 +99,7 @@ export default function addScreenshotTools(
 
   tools.retrieveScreenshots = server.tool(
     "retrieveScreenshots",
-    "Retrieve screenshot results by screenshot ID. Returns URLs to the generated screenshots.",
+    "Get the results of a takeScreenshot job: each browser's status and links to its screenshot and thumbnail. Read-only. Pass the ID that takeScreenshot returned. If some screenshots are still being taken, call it again after 15-30 seconds. To find older jobs use getScreenshotList.",
     {
       screenshotId: z.string().describe("The screenshot ID from takeScreenshot"),
     },
@@ -139,7 +139,7 @@ export default function addScreenshotTools(
 
   tools.getScreenshotList = server.tool(
     "getScreenshotList",
-    "Get a list of all screenshot jobs with pagination.",
+    "List the account's earlier screenshot jobs (from takeScreenshot), newest first, with each job's ID, state and creation time. Read-only. Use it to find an ID for retrieveScreenshots. Paginate with `offset` / `limit` (default 10, max 100).",
     {
       offset: z
         .union([z.number(), z.string().transform(Number)])

@@ -28,7 +28,7 @@ export default function addTunnelTools(
 
   tools.getTunnelList = server.tool(
     "getTunnelList",
-    "Get a list of all active TestingBot tunnels on the account, with their identifiers. Tunnels allow you to test websites behind firewalls or on your local machine.",
+    "List the account's running TestingBot tunnels with their ID, identifier, status and IP, and mark the ones this server started. Read-only. Use it to find the numeric ID for startLiveSession's `tunnelId` or deleteTunnel, or the identifier for tb_openBrowser's `tunnelIdentifier`, and to check whether a tunnel is running before testing a local URL.",
     {},
     async () => {
       try {
@@ -90,7 +90,7 @@ export default function addTunnelTools(
 
   tools.deleteTunnel = server.tool(
     "deleteTunnel",
-    "Delete an active TestingBot tunnel by its ID. This will terminate the tunnel connection.",
+    "Shut down a running tunnel on TestingBot's side by its numeric ID, ending every session that goes through it. Use it for tunnels started outside this server (e.g. by a teammate or CI); for tunnels started with startTunnel use stopTunnel, which also stops the local process. Get `tunnelId` from getTunnelList. Returns a confirmation, or an error if the ID is unknown.",
     {
       tunnelId: z.union([z.number(), z.string()]).describe("The tunnel ID to delete"),
     },
