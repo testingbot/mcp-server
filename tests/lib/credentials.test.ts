@@ -154,19 +154,58 @@ describe("lib/credentials", () => {
       expect(fs.existsSync(`${credentialsPath()}.tmp`)).toBe(false);
     });
 
-    it("relocates a legacy ~/.testingbot credential FILE instead of crashing (EEXIST)", () => {
-      // Simulate the historical testingbot-api layout: the config dir path is a FILE.
-      const legacyDir = path.join(tmpDir, "dotdir");
-      process.env.TESTINGBOT_CONFIG_DIR = legacyDir;
-      fs.writeFileSync(legacyDir, "legacykey:legacysecret\n");
+  });
 
+  // ---------------------------------------------------------------------------
+  // Legacy ~/.testingbot key:secret FILE (testingbot-api, tunnel, older CLIs)
+  // ---------------------------------------------------------------------------
+
+  describe("legacy key:secret file", () => {
+    const creds = {
+      client_key: "deadbeef",
+      client_secret: "cafebabe",
+      user: { email: "ada@example.com", id: 7 },
+    };
+    let legacy: string;
+    beforeEach(() => {
+      // The config dir path is a FILE, as other TestingBot tools write it.
+      legacy = path.join(tmpDir, "dotfile");
+      process.env.TESTINGBOT_CONFIG_DIR = legacy;
+      fs.writeFileSync(legacy, "legacykey:legacysecret\n", { mode: 0o644 });
+    });
+
+    it("reads it as the default profile", () => {
+      expect(loadFromCredentialsFile()).toEqual({ key: "legacykey", secret: "legacysecret" });
+      expect(loadFromCredentialsFile("team")).toBeNull();
+    });
+
+    it("ignores a file that is not key:secret", () => {
+      fs.writeFileSync(legacy, "garbage\n");
+      expect(loadFromCredentialsFile()).toBeNull();
+    });
+
+    it("tb_login updates it in place, keeps it a file, and backs up the old contents", () => {
       const written = writeCredentialsFile(creds);
 
-      expect(fs.existsSync(written)).toBe(true); // dotdir/credentials now exists
-      expect(fs.statSync(legacyDir).isDirectory()).toBe(true); // path is now a directory
-      expect(fs.existsSync(`${legacyDir}.legacy.bak`)).toBe(true); // legacy file preserved
-      expect(fs.readFileSync(`${legacyDir}.legacy.bak`, "utf8")).toContain("legacykey:legacysecret");
+      expect(written).toBe(legacy);
+      expect(fs.statSync(legacy).isFile()).toBe(true); // never turned into a directory
+      expect(fs.readFileSync(legacy, "utf8")).toBe("deadbeef:cafebabe\n");
+      expect(fs.statSync(legacy).mode & 0o777).toBe(0o600);
+      expect(fs.readFileSync(`${legacy}.bak`, "utf8")).toBe("legacykey:legacysecret\n");
+      expect(fs.existsSync(`${legacy}.tmp`)).toBe(false);
       expect(loadFromCredentialsFile()).toEqual({ key: "deadbeef", secret: "cafebabe" });
+    });
+
+    it("writes no backup when the credentials are unchanged", () => {
+      fs.writeFileSync(legacy, "deadbeef:cafebabe\n");
+      writeCredentialsFile(creds);
+      expect(fs.existsSync(`${legacy}.bak`)).toBe(false);
+    });
+
+    it("refuses a non-default profile and leaves the file untouched", () => {
+      process.env.TESTINGBOT_PROFILE = "team";
+      expect(() => writeCredentialsFile(creds)).toThrow(/TESTINGBOT_CONFIG_DIR/);
+      expect(fs.readFileSync(legacy, "utf8")).toBe("legacykey:legacysecret\n");
     });
   });
 

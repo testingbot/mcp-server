@@ -84,6 +84,11 @@ in any MCP client (VS Code, Cursor, Cline, Claude Desktop, …). To use a differ
 account, set `TESTINGBOT_PROFILE`; to relocate the file, set
 `TESTINGBOT_CONFIG_DIR`.
 
+If `~/.testingbot` is already a `key:secret` file (written by the TestingBot
+tunnel, `testingbot-api` or older tools), the server uses it as is, and `tb_login`
+updates that file in place, keeping the previous contents in `~/.testingbot.bak`.
+It is never moved or deleted, so those tools keep working.
+
 #### Environment Variables
 
 Alternatively (or for CI, where env vars take precedence over the file), set your

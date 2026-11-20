@@ -17,6 +17,8 @@ import {
 // (mode 0700). The `tb_login` device-auth tool writes it; `getConfig()` reads
 // it when no environment variables are set. Set `TESTINGBOT_CONFIG_DIR` to
 // relocate the directory (used by tests, and handy for sandboxed setups).
+// If ~/.testingbot is instead a legacy `key:secret` file, that file is used as
+// the default profile (see isLegacyCredentialFile below).
 //
 // We deliberately keep a tiny inline INI parser rather than add a dependency —
 // the format is trivial and self-contained here.
@@ -72,6 +74,11 @@ export function parseCredentialsIni(text: string): Record<string, Record<string,
 // null when the file is missing, the profile is absent, or it lacks a complete
 // key/secret pair — callers treat null as "no credentials".
 export function loadFromCredentialsFile(profile: string = activeProfile()): Credentials | null {
+  const dir = credentialsDir();
+  if (isLegacyCredentialFile(dir)) {
+    // A key:secret file holds one account: it is the default profile.
+    return profile === DEFAULT_PROFILE ? readLegacyCredentialFile(dir) : null;
+  }
   const path = credentialsPath();
   if (!existsSync(path)) return null;
   let text: string;
@@ -86,24 +93,64 @@ export function loadFromCredentialsFile(profile: string = activeProfile()): Cred
   return { key: p.key, secret: p.secret };
 }
 
-// Older versions of testingbot-api stored credentials at ~/.testingbot as a
-// single FILE in `key:secret` form (see node_modules/testingbot-api/lib/api.js
-// _loadConfig). Our directory layout collides with that path, so mkdirSync would
-// throw EEXIST. Move the legacy file aside (preserving it) before creating the
-// directory. Returns the backup path, or null if there was nothing to move.
-function relocateLegacyCredentialFile(dir: string): string | null {
-  if (!existsSync(dir) || !statSync(dir).isFile()) return null;
-  for (let i = 0; i < 100; i++) {
-    const target = i === 0 ? `${dir}.legacy.bak` : `${dir}.legacy.bak.${i}`;
-    if (!existsSync(target)) {
-      renameSync(dir, target);
-      return target;
-    }
+// Other TestingBot tools (testingbot-api, the tunnel, older CLIs) keep
+// credentials at ~/.testingbot as a single FILE in `key:secret` form. That path
+// collides with our directory layout. We never move, rename or delete that file,
+// since those tools still read it: we read it as the default profile, and
+// tb_login updates it in place, in the same format.
+function isLegacyCredentialFile(dir: string): boolean {
+  try {
+    return statSync(dir).isFile();
+  } catch {
+    return false;
   }
-  throw new Error(
-    `${dir} exists as a legacy credentials file and could not be moved aside. ` +
-      `Rename or remove it manually, then run tb_login again.`
-  );
+}
+
+function readLegacyCredentialFile(dir: string): Credentials | null {
+  let text: string;
+  try {
+    text = readFileSync(dir, "utf8");
+  } catch {
+    return null;
+  }
+  const line = text.split("\n").find((l) => l.trim()) ?? "";
+  const colon = line.indexOf(":");
+  if (colon < 0) return null;
+  const key = line.slice(0, colon).trim();
+  const secret = line.slice(colon + 1).trim();
+  return key && secret ? { key, secret } : null;
+}
+
+// Update a legacy key:secret file in place (atomic, mode 0600). When this
+// changes its contents, the previous contents are kept in `<file>.bak` first.
+function writeLegacyCredentialFile(dir: string, creds: DeviceCredentials): string {
+  if (activeProfile() !== DEFAULT_PROFILE) {
+    throw new Error(
+      `${dir} is a key:secret credentials file shared with other TestingBot tools, and holds ` +
+        `only one account, so profile "${activeProfile()}" can't be saved there. Set ` +
+        `TESTINGBOT_CONFIG_DIR to a separate directory for this profile. ${dir} was not changed.`
+    );
+  }
+  const content = `${creds.client_key}:${creds.client_secret}\n`;
+  const previous = readFileSync(dir, "utf8");
+  if (previous.trim() === content.trim()) return dir;
+  writeFileAtomic(`${dir}.bak`, previous);
+  writeFileAtomic(dir, content);
+  return dir;
+}
+
+// Write via a fresh temp file so mode 0600 applies at creation (writeFileSync's
+// mode is ignored for an existing world-readable file), then rename over the
+// target, so the secret is never briefly world-readable.
+function writeFileAtomic(path: string, content: string): void {
+  const tmp = `${path}.tmp`;
+  writeFileSync(tmp, content, { mode: 0o600 });
+  try {
+    chmodSync(tmp, 0o600);
+  } catch {
+    // Best effort — chmod is a no-op / may be unsupported on some platforms.
+  }
+  renameSync(tmp, path);
 }
 
 function serializeCredentialsIni(
@@ -130,7 +177,7 @@ function serializeCredentialsIni(
 // authenticating under TESTINGBOT_PROFILE=team must not wipe [default].
 export function writeCredentialsFile(creds: DeviceCredentials): string {
   const dir = credentialsDir();
-  relocateLegacyCredentialFile(dir);
+  if (isLegacyCredentialFile(dir)) return writeLegacyCredentialFile(dir, creds);
   mkdirSync(dir, { recursive: true, mode: 0o700 });
   try {
     chmodSync(dir, 0o700);
@@ -148,16 +195,6 @@ export function writeCredentialsFile(creds: DeviceCredentials): string {
     secret: creds.client_secret,
   };
 
-  // Write to a fresh temp file (so mode 0600 applies at creation — writeFileSync's
-  // mode is ignored for a pre-existing world-readable file) and rename atomically
-  // over the target. This guarantees the secret is never briefly world-readable.
-  const tmp = `${path}.tmp`;
-  writeFileSync(tmp, serializeCredentialsIni(profiles, creds.user.email), { mode: 0o600 });
-  try {
-    chmodSync(tmp, 0o600);
-  } catch {
-    // Best effort — chmod is a no-op / may be unsupported on some platforms.
-  }
-  renameSync(tmp, path);
+  writeFileAtomic(path, serializeCredentialsIni(profiles, creds.user.email));
   return path;
 }
