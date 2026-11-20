@@ -56,3 +56,8 @@ releases/
 
 # Agent skill files (docs only, not used at runtime).
 skills/
+
+# Container / directory files.
+Dockerfile
+.dockerignore
+llms-install.md

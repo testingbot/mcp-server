@@ -174,6 +174,49 @@ Add to `.cursor/mcp.json`:
 }
 ```
 
+#### Claude Code
+
+```bash
+claude mcp add testingbot -e TESTINGBOT_KEY=your-api-key -e TESTINGBOT_SECRET=your-api-secret -- npx -y @testingbot/mcp-server
+```
+
+Leave out the two `-e` options to sign in with `tb_login` instead.
+
+#### Cline
+
+Ask Cline to install the server from this repository; it follows
+[`llms-install.md`](llms-install.md). Or add the same `mcpServers` entry as for
+Claude Desktop to Cline's MCP settings.
+
+#### Docker
+
+The repository includes a `Dockerfile` that runs the server over stdio:
+
+```bash
+docker build -t testingbot-mcp https://github.com/testingbot/mcp-server.git
+```
+
+```json
+{
+  "mcpServers": {
+    "testingbot": {
+      "command": "docker",
+      "args": ["run", "-i", "--rm", "-e", "TESTINGBOT_KEY", "-e", "TESTINGBOT_SECRET", "testingbot-mcp"],
+      "env": {
+        "TESTINGBOT_KEY": "your-api-key",
+        "TESTINGBOT_SECRET": "your-api-secret"
+      }
+    }
+  }
+}
+```
+
+In a container, use environment variables for credentials: `tb_login` stores
+them inside the container, so they are lost when it exits. The image has no Java,
+so `startTunnel` doesn't work in it: to test `localhost`, run the npm package
+instead, or start a [TestingBot Tunnel](https://testingbot.com/support/tunnel) on
+your machine and pass its identifier to the tools.
+
 ## 🤖 Let an AI Agent Drive a Remote Browser or Device
 
 This server already includes the automation tools from [`@testingbot/automation-mcp`](https://github.com/testingbot/automation-mcp) — installing this package gives the agent the ability to **actually drive** a remote browser or real mobile device on TestingBot's grid, not just manage resources.
