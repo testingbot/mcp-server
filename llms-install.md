@@ -50,6 +50,12 @@ from https://testingbot.com/members/user/security and add them to the entry:
 Never invent or guess credentials, and don't write placeholder values: when these
 variables are set they take precedence over `tb_login`.
 
+**Don't touch credential files yourself.** Never read, print, move, edit or
+delete `~/.testingbot` (a `key:secret` file or a directory, depending on which
+TestingBot tools the user has). Other TestingBot tools rely on it, and the server
+reads it on its own. If the server reports no credentials, use `tb_login` or ask
+the user.
+
 ## 3. Check that it works
 
 Call `getUserInfo`. It should return the user's TestingBot account details. If it
