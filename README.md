@@ -13,7 +13,7 @@ TestingBot's official Model Context Protocol (MCP) server implementation. This s
 
 **Claude Desktop**: download `testingbot-mcp-server-<version>.mcpb` from the [latest release](https://github.com/testingbot/mcp-server/releases/latest) and double-click it. Claude will set up the TestingBot MCP server automatically.
 
-After install, set your credentials from [TestingBot account settings](https://testingbot.com/members/user/security).
+After install, either enter your key and secret from [TestingBot account settings](https://testingbot.com/members/user/security), or leave them blank and ask Claude to run `tb_login` to sign in from the browser.
 
 ## Features
 
