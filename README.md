@@ -3,6 +3,7 @@
 [![NPM Version](https://img.shields.io/npm/v/@testingbot/mcp-server)](https://www.npmjs.com/package/@testingbot/mcp-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![MCP Badge](https://lobehub.com/badge/mcp/testingbot-mcp-server)](https://lobehub.com/mcp/testingbot-mcp-server)
+[![TestingBot MCP Server MCP server – quality and maintenance score on Glama](https://glama.ai/mcp/servers/testingbot/mcp-server/badges/score.svg)](https://glama.ai/mcp/servers/testingbot/mcp-server)
 
 TestingBot's official Model Context Protocol (MCP) server implementation. This server enables AI assistants to interact with TestingBot's testing infrastructure, allowing you to manage tests, browsers, devices, and more through conversational interfaces.
 

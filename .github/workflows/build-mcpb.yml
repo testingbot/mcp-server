@@ -69,6 +69,9 @@ jobs:
           echo "size=$SIZE"  >> "$GITHUB_OUTPUT"
           echo "Built $NAME ($SIZE)"
 
+      - name: Smoke-test the bundle (it must start and list its tools)
+        run: bash scripts/smoke-mcpb.sh "${{ steps.artefact.outputs.file }}"
+
       - name: Upload bundle as workflow artifact (always)
         uses: actions/upload-artifact@v4
         with:
