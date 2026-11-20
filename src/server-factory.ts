@@ -291,7 +291,7 @@ export class TestingBotMcpServer {
   }
 
   // Validates the runtime environment and credentials before accepting MCP
-  // traffic. Throws on any blocking issue so the entry point can exit with a
+  // traffic. Throws on a blocking issue (an unsupported Node version) so the entry point can exit with a
   // clear error instead of letting the first tool call fail mysteriously.
   public async preflight(): Promise<void> {
     // Must match `engines.node` in package.json, and the floor enforced by
@@ -318,9 +318,14 @@ export class TestingBotMcpServer {
       await this.testingBotApi.getUserInfo();
       logger.info("Credentials verified against TestingBot API");
     } catch (error) {
+      // Start anyway. Exiting here makes the client show the server as failed,
+      // with the reason buried in a log, and leaves no tool list to inspect
+      // (directories such as the Docker MCP Catalog start servers with
+      // placeholder credentials to list their tools). Tool calls report the
+      // API error, and tb_login can replace the credentials.
       const message = error instanceof Error ? error.message : String(error);
-      throw new Error(
-        `TestingBot credential check failed: ${message}. Verify TESTINGBOT_KEY / TESTINGBOT_SECRET in the MCP client config.`
+      logger.warn(
+        `TestingBot credential check failed: ${message}. Starting anyway; tool calls will fail until the credentials are fixed. Verify TESTINGBOT_KEY / TESTINGBOT_SECRET in the MCP client config, or run tb_login.`
       );
     }
   }

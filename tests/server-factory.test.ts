@@ -84,11 +84,11 @@ describe("TestingBotMcpServer.preflight", () => {
     expect(server.tools.tb_login.name).toBe("tb_login");
   });
 
-  it("wraps credential-check failures with a clear message", async () => {
+  it("starts anyway when TestingBot rejects the credentials", async () => {
     setNodeVersion("20.10.0");
     testingBotApiMock.getUserInfo.mockRejectedValue(new Error("401 Unauthorized"));
     const server = new TestingBotMcpServer(testingBotApiMock, configMock);
-    await expect(server.preflight()).rejects.toThrow(/credential check failed.*401 Unauthorized/);
+    await expect(server.preflight()).resolves.toBeUndefined();
   });
 });
 
