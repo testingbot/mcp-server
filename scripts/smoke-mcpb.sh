@@ -6,6 +6,7 @@
 #
 #   scripts/smoke-mcpb.sh releases/testingbot-mcp-server-<version>.mcpb
 set -euo pipefail
+# perl's alarm stands in for `timeout`, which macOS runners don't have.
 
 BUNDLE="${1:?usage: smoke-mcpb.sh <bundle.mcpb>}"
 WORK="$(mktemp -d -t mcpb-smoke.XXXXXX)"
@@ -23,7 +24,7 @@ OUT="$(
     sleep 15
   } | (cd "$WORK/bundle" && HOME="$WORK/home" TESTINGBOT_CONFIG_DIR="$WORK/home/.testingbot" \
         TESTINGBOT_KEY='${user_config.testingbot-key}' TESTINGBOT_SECRET='${user_config.testingbot-secret}' \
-        timeout 60 node dist/index.js 2>"$WORK/stderr.log") || true
+        perl -e 'alarm shift; exec @ARGV' 60 node dist/index.js 2>"$WORK/stderr.log") || true
 )"
 
 COUNT="$(printf '%s\n' "$OUT" | node -e '
