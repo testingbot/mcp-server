@@ -8,12 +8,12 @@
     "source": "github"
   },
   "websiteUrl": "https://testingbot.com/support/ai/mcp",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "@testingbot/mcp-server",
-      "version": "1.4.1",
+      "version": "1.4.2",
       "transport": {
         "type": "stdio"
       },
