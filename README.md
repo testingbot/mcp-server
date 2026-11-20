@@ -7,6 +7,8 @@
 
 TestingBot's official Model Context Protocol (MCP) server implementation. This server enables AI assistants to interact with TestingBot's testing infrastructure, allowing you to manage tests, browsers, devices, and more through conversational interfaces.
 
+![Claude Code using the TestingBot MCP server to open Chrome on Windows 11 and read a page](https://github.com/user-attachments/assets/039c1248-4e28-4f8b-b33f-209ea42297b5)
+
 ## ⚡ One-Click Install
 
 [![Install in VS Code](https://img.shields.io/badge/Install-VS_Code-007ACC?style=for-the-badge&logo=visualstudiocode&logoColor=white)](https://testingbot.com/mcp/install?client=vscode) [![Install in Cursor](https://img.shields.io/badge/Install-Cursor-000000?style=for-the-badge&logo=cursor&logoColor=white)](https://testingbot.com/mcp/install?client=cursor)
