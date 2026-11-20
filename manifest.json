@@ -1,14 +1,22 @@
 {
-  "manifest_version": "0.2",
+  "manifest_version": "0.3",
   "name": "@testingbot/mcp-server",
+  "display_name": "TestingBot",
   "version": "1.4.0",
-  "description": "TestingBot's official MCP Server for AI-powered testing automation. Manage browsers, tests, builds, screenshots, storage, team members, and tunnels through conversational interfaces.",
-  "icon": "icon.png",
-  "homepage": "https://github.com/testingbot/mcp-server",
+  "description": "Run and manage browser and mobile tests on TestingBot's cloud of real browsers and devices from Claude.",
+  "long_description": "The official TestingBot extension lets Claude work with [TestingBot](https://testingbot.com), a cloud of real desktop browsers, emulators and real mobile devices.\n\n- **Drive a remote browser or device**: open Chrome, Firefox, Safari or Edge on any OS, or a real iPhone or Android device, then navigate, click, type and take screenshots.\n- **Test localhost and private sites** through a TestingBot Tunnel started from Claude.\n- **Run test suites**: Maestro, Espresso and XCUITest on real devices; upload apps to TestingBot Storage.\n- **Investigate failures**: list tests and builds, read logs, and get an AI analysis of why a test failed.\n- **Cross-browser screenshots, live sessions, visual and accessibility checks, team and account management.**\n\nSign in with your TestingBot API key and secret, or leave them empty and ask Claude to \"log me in to TestingBot\" (browser sign-in). Sessions and test runs use your TestingBot minutes; a free trial is available.",
   "author": {
     "name": "TestingBot",
     "url": "https://testingbot.com"
   },
+  "homepage": "https://github.com/testingbot/mcp-server",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/testingbot/mcp-server"
+  },
+  "documentation": "https://github.com/testingbot/mcp-server#readme",
+  "support": "https://github.com/testingbot/mcp-server/issues",
+  "icon": "icon.png",
   "server": {
     "type": "node",
     "entry_point": "dist/index.js",
@@ -23,23 +31,409 @@
       }
     }
   },
-  "user_config": {
-    "testingbot-key": {
-      "type": "string",
-      "title": "TestingBot API key",
-      "description": "Your TestingBot API key. Find it at https://testingbot.com/members/user/security",
-      "required": true,
-      "sensitive": true
+  "tools": [
+    {
+      "name": "tb_login",
+      "description": "Authenticate with TestingBot — no API key or secret to copy or paste."
     },
-    "testingbot-secret": {
-      "type": "string",
-      "title": "TestingBot API secret",
-      "description": "Your TestingBot API secret. Find it at https://testingbot.com/members/user/security",
-      "required": true,
-      "sensitive": true
+    {
+      "name": "getBrowsers",
+      "description": "List the browsers, versions and platforms (and mobile emulators/simulators, with their browser ID) that TestingBot can run automated tests on."
+    },
+    {
+      "name": "getDevices",
+      "description": "List TestingBot's physical (real) mobile devices with their ID, name, platform, OS version and whether each is available right now."
+    },
+    {
+      "name": "getTests",
+      "description": "List the account's most recent tests (newest first) with each test's session ID, name, status, browser, platform, video link and duration."
+    },
+    {
+      "name": "getTestDetails",
+      "description": "Show everything recorded for one test: name, status and status message, browser, platform and device, duration, build, extra data, and links to the video, screenshots, log files and test page."
+    },
+    {
+      "name": "updateTest",
+      "description": "Change a test's metadata on TestingBot: its name, pass/fail status, build, or extra data (a JSON string)."
+    },
+    {
+      "name": "deleteTest",
+      "description": "Permanently delete one test and its video, logs and screenshots."
+    },
+    {
+      "name": "stopTest",
+      "description": "End a test that is still running, immediately, as if the client had quit; the test is kept with its video and logs up to that point."
+    },
+    {
+      "name": "getBuilds",
+      "description": "List the account's builds (groups of tests that share a build name), newest first, with each build's name, ID, number of tests and creation date."
+    },
+    {
+      "name": "getTestsForBuild",
+      "description": "List every test in one build, with each test's session ID, status, browser, platform and duration."
+    },
+    {
+      "name": "deleteBuild",
+      "description": "Permanently delete a build and every test in it, including their videos, logs and screenshots."
+    },
+    {
+      "name": "uploadFile",
+      "description": "Upload a local app file (.apk, .ipa or .zip) to TestingBot storage and return its `tb://` app URL, to use as `appium:app` in a native-app session (appium_session_management)."
+    },
+    {
+      "name": "uploadRemoteFile",
+      "description": "Have TestingBot download an app file (.apk, .ipa or .zip) from a public http(s) URL into its storage, and return its `tb://` app URL for `appium:app`."
+    },
+    {
+      "name": "getStorageFiles",
+      "description": "List the app files in the account's TestingBot storage, newest first, with each file's name, `tb://` app URL, type, version and upload time."
+    },
+    {
+      "name": "deleteStorageFile",
+      "description": "Permanently delete an uploaded app file from TestingBot storage."
+    },
+    {
+      "name": "takeScreenshot",
+      "description": "Capture screenshots of one URL in several browsers and platforms at once, for a quick visual cross-browser check."
+    },
+    {
+      "name": "retrieveScreenshots",
+      "description": "Get the results of a takeScreenshot job: each browser's status and links to its screenshot and thumbnail."
+    },
+    {
+      "name": "getScreenshotList",
+      "description": "List the account's earlier screenshot jobs (from takeScreenshot), newest first, with each job's ID, state and creation time."
+    },
+    {
+      "name": "getUserInfo",
+      "description": "Show your own TestingBot account: name, email, company, plan, testing time left (seconds available) and concurrency limits for VMs and mobile devices."
+    },
+    {
+      "name": "updateUserInfo",
+      "description": "Change your own TestingBot account's first name, last name or email."
+    },
+    {
+      "name": "startLiveSession",
+      "description": "Create a link that opens a live (manual, interactive) testing session in the user's TestingBot dashboard, for a person to test by hand."
+    },
+    {
+      "name": "getTeam",
+      "description": "Retrieve team settings: plan details, team size, and concurrency (parallel sessions allowed, running now, and queued waiting for a free slot, for VMs and physical devices)."
+    },
+    {
+      "name": "getUsersInTeam",
+      "description": "List the members of the account's TestingBot team with each user's ID, email, plan, roles, read-only flag and concurrency limit."
+    },
+    {
+      "name": "getUserFromTeam",
+      "description": "Show one team member's details: name, email, role, whether the account is active, join date and last login."
+    },
+    {
+      "name": "createCdpSession",
+      "description": "Start a remote browser on TestingBot and return its Chrome DevTools Protocol (CDP) WebSocket URL, for connecting your own Puppeteer or Playwright script to it."
+    },
+    {
+      "name": "getTunnelList",
+      "description": "List the account's running TestingBot tunnels with their ID, identifier, status and IP, and mark the ones this server started."
+    },
+    {
+      "name": "deleteTunnel",
+      "description": "Shut down a running tunnel on TestingBot's side by its numeric ID, ending every session that goes through it."
+    },
+    {
+      "name": "startTunnel",
+      "description": "Start a TestingBot Tunnel on this machine so remote browsers and devices can reach localhost, private-network and intranet URLs."
+    },
+    {
+      "name": "stopTunnel",
+      "description": "Stop a TestingBot Tunnel that was started with startTunnel."
+    },
+    {
+      "name": "getFailureLogs",
+      "description": "Download a test's log files (selenium, browser console, chrome, vm, appium) and return their text, one section per log."
+    },
+    {
+      "name": "getVisualTests",
+      "description": "List the account's hosted visual regression tests with each test's ID, name, URL, browsers and whether it is paused."
+    },
+    {
+      "name": "getVisualRuns",
+      "description": "List visual runs (one browser's screenshot compared with its baseline), newest first, with each run's ID, name, browser, verdict, percentage of pixels changed versus its threshold, date and run page link."
+    },
+    {
+      "name": "explainVisualRun",
+      "description": "Explain what changed in one visual run: each changed region and what it is, an AI description of the change when the account has AI region names on, text and CSS changes from the page, and links to the screenshot, bas..."
+    },
+    {
+      "name": "reviewVisualRun",
+      "description": "Approve or reject a visual run, the same as on its run page in the dashboard."
+    },
+    {
+      "name": "getAccessibilityTests",
+      "description": "List the account's scheduled accessibility tests (each scans one URL on a schedule), with each test's name, ID, URL, whether it is paused, and its latest run."
+    },
+    {
+      "name": "getAccessibilityRuns",
+      "description": "List the scans (runs) of one accessibility test, newest first, with each run's ID, score and issue counts."
+    },
+    {
+      "name": "getAccessibilityFindings",
+      "description": "Show what an accessibility scan found: failing WCAG A/AA rules with the failing elements (CSS selector, HTML snippet, how to fix), checks that need human review, best-practice recommendations, and which issues are new..."
+    },
+    {
+      "name": "runAccessibilityTest",
+      "description": "Start a scan of a scheduled accessibility test right now, the same as Run now in the dashboard, instead of waiting for its schedule."
+    },
+    {
+      "name": "getAiFailureAnalysis",
+      "description": "Read the AI failure analysis (TestingBot AI Insights) of a test: summary, root cause, timeline, log evidence, suggested fixes, failure category, likely owner and confidence."
+    },
+    {
+      "name": "analyzeTestFailure",
+      "description": "Explain why a test failed with TestingBot AI Insights."
+    },
+    {
+      "name": "listTestFiles",
+      "description": "Find the test files in a local project: detects the framework (Playwright, Cypress, WebdriverIO, Selenium (JS), Nightwatch, Puppeteer, Jest, Mocha, Vitest, Maestro, Espresso or XCUITest) and returns the relative paths..."
+    },
+    {
+      "name": "setupTestingBot",
+      "description": "Detect the testing framework in a project and return the ready-to-paste TestingBot configuration snippet, install command, and env-var requirements."
+    },
+    {
+      "name": "maestroCheatSheet",
+      "description": "Get a Maestro flow YAML syntax reference: file structure, commands, selectors, and the TestingBot run workflow."
+    },
+    {
+      "name": "uploadMaestroApp",
+      "description": "Upload a mobile app (APK, AAB, IPA, or zipped .app) for Maestro testing on TestingBot."
+    },
+    {
+      "name": "uploadMaestroFlows",
+      "description": "Upload Maestro flow YAML files for a project."
+    },
+    {
+      "name": "runMaestroTest",
+      "description": "Start a Maestro test run on a TestingBot device."
+    },
+    {
+      "name": "getMaestroRunStatus",
+      "description": "Check whether a Maestro run has finished: returns each run's status (WAITING, READY = running, DONE, FAILED, CANCELLED), device and flow results so far."
+    },
+    {
+      "name": "getMaestroRunResults",
+      "description": "Get the final results of a finished Maestro run: each flow's outcome (failures first, with error messages and video links) plus the JUnit XML report."
+    },
+    {
+      "name": "uploadMaestroCompanionApp",
+      "description": "Upload a companion app (.apk/.aab/.ipa) that should be installed alongside the app under test in a Maestro run."
+    },
+    {
+      "name": "listMaestroProjects",
+      "description": "List the account's Maestro projects, newest first, with the app details, flow names and run IDs of each."
+    },
+    {
+      "name": "listMaestroRuns",
+      "description": "List Maestro runs across all projects (newest first), or look up runs by their build/run name."
+    },
+    {
+      "name": "getMaestroFlowDetails",
+      "description": "Get the detailed result of a single Maestro flow: error messages, step-level JUnit report, and links to the video, screenshots, and device logs."
+    },
+    {
+      "name": "cancelMaestroRun",
+      "description": "Stop a Maestro run that is still waiting or running, releasing its devices."
+    },
+    {
+      "name": "retryMaestroRun",
+      "description": "Run a finished Maestro run again on the same app and flows, or only one failed flow when `flowId` is given (get it from getMaestroRunStatus)."
+    },
+    {
+      "name": "uploadAppAutomateApp",
+      "description": "Upload the app under test for an Espresso (.apk/.aab) or XCUITest (.ipa) run on TestingBot."
+    },
+    {
+      "name": "uploadAppAutomateTests",
+      "description": "Upload the test suite for an Espresso or XCUITest project: the instrumented test APK for Espresso, or the zipped XCUITest runner bundle (.zip) for XCUITest."
+    },
+    {
+      "name": "runAppAutomateTest",
+      "description": "Start an Espresso or XCUITest run on a TestingBot device."
+    },
+    {
+      "name": "getAppAutomateRunStatus",
+      "description": "Check whether an Espresso or XCUITest run has finished: returns each run's status (WAITING, READY = running, DONE, FAILED) and device."
+    },
+    {
+      "name": "getAppAutomateRunResults",
+      "description": "Get the results of a finished Espresso or XCUITest project: each run's outcome plus the JUnit XML report with per-test results."
+    },
+    {
+      "name": "tb_openBrowser",
+      "description": "Start a remote browser session on TestingBot via WebDriver."
+    },
+    {
+      "name": "tb_navigate",
+      "description": "Load a URL in an open browser session (from tb_openBrowser)."
+    },
+    {
+      "name": "tb_snapshot",
+      "description": "Describe the current page of a browser session: title, URL, headings, the text of links and buttons, and the start of the body text (`bodyChars`, default 5000)."
+    },
+    {
+      "name": "tb_click",
+      "description": "Click one element in a browser session."
+    },
+    {
+      "name": "tb_type",
+      "description": "Type text into an input, textarea or other editable element in a browser session."
+    },
+    {
+      "name": "tb_getText",
+      "description": "Return the visible text of one element in a browser session, for example to check a heading, status message or price."
+    },
+    {
+      "name": "tb_getAttribute",
+      "description": "Return one attribute of an element in a browser session, e.g."
+    },
+    {
+      "name": "tb_executeScript",
+      "description": "Run JavaScript in the current page of a browser session and return its result as JSON."
+    },
+    {
+      "name": "tb_closeBrowser",
+      "description": "End a browser session opened with tb_openBrowser and stop billing TestingBot minutes for it."
+    },
+    {
+      "name": "tb_screenshot",
+      "description": "Take a PNG screenshot of the current page in a browser session."
+    },
+    {
+      "name": "tb_pressKey",
+      "description": "Press a key or key combination in a browser session, sent to the element that currently has focus (not to a selector)."
+    },
+    {
+      "name": "tb_listSessions",
+      "description": "List the browser sessions this server has open, with their IDs, capabilities, age, idle time and live-view links."
+    },
+    {
+      "name": "appium_session_management",
+      "description": "Manage TestingBot mobile-device sessions."
+    },
+    {
+      "name": "appium_mobile_device_control",
+      "description": "Control device behavior: lock/unlock the screen, shake the device, or open the notifications panel."
+    },
+    {
+      "name": "appium_geolocation",
+      "description": "Get, set, or reset the device geolocation (GPS coordinates)."
+    },
+    {
+      "name": "appium_mobile_device_info",
+      "description": "Get device information, battery status, or current device time in a single call."
+    },
+    {
+      "name": "appium_mobile_file",
+      "description": "Push or pull a file using Appium mobile extensions."
+    },
+    {
+      "name": "appium_driver_settings",
+      "description": "Read or update Appium driver session settings (e.g."
+    },
+    {
+      "name": "appium_gesture",
+      "description": "Perform a touch gesture."
+    },
+    {
+      "name": "appium_drag_and_drop",
+      "description": "Perform a drag-and-drop gesture from a source location to a target location."
+    },
+    {
+      "name": "appium_perform_actions",
+      "description": "Execute raw W3C Actions API sequences for advanced multi-touch gestures not covered by appium_gesture."
+    },
+    {
+      "name": "appium_find_element",
+      "description": "Find an element by strategy and selector."
+    },
+    {
+      "name": "appium_find_elements",
+      "description": "Find all elements matching a strategy and selector."
+    },
+    {
+      "name": "appium_mobile_press_key",
+      "description": "Press navigation keys (BACK, HOME, APP_SWITCH) on Android or physical buttons (HOME, volume, etc.) on iOS/tvOS."
+    },
+    {
+      "name": "appium_set_value",
+      "description": "Enter text into an element"
+    },
+    {
+      "name": "appium_mobile_keyboard",
+      "description": "Hide the software keyboard or check if it is visible (Android UiAutomator2 / iOS XCUITest)."
+    },
+    {
+      "name": "appium_get_text",
+      "description": "Get text from an element"
+    },
+    {
+      "name": "appium_get_element_attribute",
+      "description": "Get the value of an element attribute."
+    },
+    {
+      "name": "appium_mobile_clipboard",
+      "description": "Read or set the device clipboard as plain text (Android UiAutomator2 / iOS XCUITest)."
+    },
+    {
+      "name": "appium_get_active_element",
+      "description": "Get the currently active/focused element and return its UUID for follow-up interactions."
+    },
+    {
+      "name": "appium_get_page_source",
+      "description": "Get current-screen XML."
+    },
+    {
+      "name": "appium_orientation",
+      "description": "Get or set the device/screen orientation."
+    },
+    {
+      "name": "appium_alert",
+      "description": "Handle system alerts with action=accept|dismiss, or read alert text with action=get_text."
+    },
+    {
+      "name": "appium_screenshot",
+      "description": "Take a screenshot and save as PNG."
+    },
+    {
+      "name": "appium_get_window_size",
+      "description": "Get the width and height of the device screen in pixels."
+    },
+    {
+      "name": "appium_screen_recording",
+      "description": "Start or stop screen recording."
+    },
+    {
+      "name": "appium_app_lifecycle",
+      "description": "Manage app lifecycle, installation, state, data, and deep links."
+    },
+    {
+      "name": "appium_mobile_permissions",
+      "description": "Get/update Android app permissions or iOS Simulator privacy services; reset iOS privacy prompts."
+    },
+    {
+      "name": "appium_context",
+      "description": "Manage Appium contexts with one tool."
+    },
+    {
+      "name": "generate_locators",
+      "description": "Generate current-page locator candidates for inspection."
+    },
+    {
+      "name": "appium_generate_tests",
+      "description": "Return a workflow to execute the scenario with MCP tools, then generate test code from observed interactions."
     }
-  },
-  "license": "MIT",
+  ],
+  "tools_generated": true,
   "keywords": [
     "testingbot",
     "testing",
@@ -48,6 +442,40 @@
     "mobile-testing",
     "cross-browser",
     "screenshots",
-    "automation"
-  ]
+    "automation",
+    "appium",
+    "maestro",
+    "real-devices",
+    "tunnel"
+  ],
+  "license": "MIT",
+  "privacy_policies": [
+    "https://testingbot.com/privacy"
+  ],
+  "compatibility": {
+    "platforms": [
+      "darwin",
+      "win32",
+      "linux"
+    ],
+    "runtimes": {
+      "node": ">=20.0.0"
+    }
+  },
+  "user_config": {
+    "testingbot-key": {
+      "type": "string",
+      "title": "TestingBot API key",
+      "description": "Your TestingBot API key, from https://testingbot.com/members/user/security. Leave empty to sign in from Claude with tb_login instead.",
+      "required": false,
+      "sensitive": true
+    },
+    "testingbot-secret": {
+      "type": "string",
+      "title": "TestingBot API secret",
+      "description": "Your TestingBot API secret, from https://testingbot.com/members/user/security. Leave empty to sign in from Claude with tb_login instead.",
+      "required": false,
+      "sensitive": true
+    }
+  }
 }

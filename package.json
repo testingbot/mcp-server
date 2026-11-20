@@ -24,7 +24,8 @@
     "version": "npm run version:sync && git add manifest.json server.json",
     "dev:rebuild": "bash scripts/dev.sh",
     "mcpb": "bash scripts/build-mcpb.sh",
-    "mcpb:validate": "mcpb validate manifest.json"
+    "mcpb:validate": "mcpb validate manifest.json",
+    "mcpb:smoke": "bash scripts/smoke-mcpb.sh"
   },
   "bin": {
     "testingbot-mcp-server": "dist/index.js"

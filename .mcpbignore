@@ -1,11 +1,12 @@
 # Files excluded from the .mcpb bundle. See https://github.com/anthropics/mcpb
 # for full pattern semantics.
 
-# Source — we ship dist/ only.
-src/
-tests/
-docs/
-scripts/
+# Source — we ship dist/ only. Anchored with a leading slash: an unanchored
+# `src/` also strips node_modules/*/src (e.g. debug), and the server can't start.
+/src/
+/tests/
+/docs/
+/scripts/
 
 # Build / type artifacts not needed at runtime.
 **/*.map
@@ -51,11 +52,11 @@ node_modules/**/HISTORY.md
 node_modules/**/man/
 
 # Output of this script itself.
-releases/
+/releases/
 *.mcpb
 
 # Agent skill files (docs only, not used at runtime).
-skills/
+/skills/
 
 # Container / directory files.
 Dockerfile

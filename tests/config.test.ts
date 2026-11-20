@@ -53,6 +53,18 @@ describe("getConfig credential resolution", () => {
     expect(config).toEqual({ "testingbot-key": "env-key", "testingbot-secret": "env-secret" });
   });
 
+  it("ignores unsubstituted ${...} templates and uses the credentials file", () => {
+    // A .mcpb install whose optional key/secret fields were left blank.
+    process.env.TESTINGBOT_KEY = "${user_config.testingbot-key}";
+    process.env.TESTINGBOT_SECRET = "${user_config.testingbot-secret}";
+    writeCredsFile("default", "file-key", "file-secret");
+
+    expect(getConfig()).toEqual({
+      "testingbot-key": "file-key",
+      "testingbot-secret": "file-secret",
+    });
+  });
+
   it("honors legacy TB_KEY / TB_SECRET aliases", () => {
     process.env.TB_KEY = "legacy-key";
     process.env.TB_SECRET = "legacy-secret";

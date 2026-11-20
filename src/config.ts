@@ -4,14 +4,24 @@ import { loadFromCredentialsFile } from "./lib/credentials.js";
 
 dotenv.config();
 
+// A value is unusable when it is empty or an unsubstituted template such as
+// `${user_config.testingbot-key}` (a .mcpb install whose optional fields were
+// left blank) or `${input:TESTINGBOT_KEY}`. Treating those as credentials would
+// override the tb_login file with a key TestingBot rejects.
+function usable(value: string | undefined): string {
+  const v = value?.trim() ?? "";
+  return /^\$\{[^}]*\}$/.test(v) ? "" : v;
+}
+
 function fromEnv(): { key: string; secret: string } {
   const key =
-    process.env.TESTINGBOT_KEY || process.env.TB_KEY || process.env.TESTINGBOT_USERNAME || "";
+    usable(process.env.TESTINGBOT_KEY) ||
+    usable(process.env.TB_KEY) ||
+    usable(process.env.TESTINGBOT_USERNAME);
   const secret =
-    process.env.TESTINGBOT_SECRET ||
-    process.env.TB_SECRET ||
-    process.env.TESTINGBOT_ACCESS_KEY ||
-    "";
+    usable(process.env.TESTINGBOT_SECRET) ||
+    usable(process.env.TB_SECRET) ||
+    usable(process.env.TESTINGBOT_ACCESS_KEY);
   return { key, secret };
 }
 
