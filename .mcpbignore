@@ -57,6 +57,8 @@ node_modules/**/man/
 
 # Agent skill files (docs only, not used at runtime).
 /skills/
+/plugins/
+/.claude-plugin/
 
 # Container / directory files.
 Dockerfile

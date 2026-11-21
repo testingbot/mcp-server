@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-// Mirrors package.json#version into manifest.json and server.json so MCPB
-// bundles and the MCP registry entry never drift from the npm release.
+// Mirrors package.json#version into manifest.json, server.json and the Claude
+// Code plugin (its version and the npx package it pins) so MCPB bundles, the
+// MCP registry entry and the plugin never drift from the npm release.
 // Run modes:
 //   node scripts/sync-version.mjs          → rewrite files in place
 //   node scripts/sync-version.mjs --check  → exit non-zero on drift (CI gate)
@@ -36,6 +37,23 @@ const targets = [
           p.version = version;
         });
       }
+      return data;
+    },
+  },
+  {
+    path: resolve(repoRoot, "plugins/testingbot/.claude-plugin/plugin.json"),
+    apply: (data) => {
+      data.version = version;
+      return data;
+    },
+  },
+  {
+    path: resolve(repoRoot, "plugins/testingbot/.mcp.json"),
+    apply: (data) => {
+      const server = data.mcpServers.testingbot;
+      server.args = server.args.map((a) =>
+        a.startsWith("@testingbot/mcp-server@") ? `@testingbot/mcp-server@${version}` : a
+      );
       return data;
     },
   },

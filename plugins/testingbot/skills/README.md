@@ -7,7 +7,11 @@ One folder per task, each with a `SKILL.md` (YAML front matter `name` and `descr
 | `why-did-my-test-fail` | `why-did-my-test-fail` |
 | `summarise-build` | `summarise-build` |
 | `find-flaky-tests` | `find-flaky-tests` |
+| `run-my-tests-on-testingbot` | (skill only) |
+| `test-localhost` | (skill only) |
+| `run-maestro-flows` | (skill only) |
+| `cross-browser-check` | (skill only) |
 
-To use them with Claude Code, copy a folder into `.claude/skills/` in your project (or `~/.claude/skills/` for all projects). The TestingBot MCP server must be configured, since the steps call its tools and resources.
+In Claude Code, install the plugin (`/plugin marketplace add testingbot/mcp-server`, then `/plugin install testingbot@testingbot`) to get all of them plus the server. Or copy a folder into `.claude/skills/` in your project (or `~/.claude/skills/` for all projects). The TestingBot MCP server must be configured, since the steps call its tools and resources.
 
 `tests/prompts-resources.test.ts` fails if a prompt has no skill folder, so keep the two in step.
