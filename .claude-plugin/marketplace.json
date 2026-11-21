@@ -1,0 +1,12 @@
+{
+  "name": "testingbot",
+  "description": "TestingBot plugins for Claude Code.",
+  "owner": { "name": "TestingBot", "url": "https://testingbot.com" },
+  "plugins": [
+    {
+      "name": "testingbot",
+      "source": "./plugins/testingbot",
+      "description": "Run and debug tests on TestingBot's real browsers and mobile devices: the TestingBot MCP server plus testing workflow skills."
+    }
+  ]
+}

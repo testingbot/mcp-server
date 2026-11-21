@@ -34,7 +34,7 @@ describe("prompts", () => {
 
   it("has a skill file for every prompt", () => {
     for (const prompt of PROMPTS) {
-      const file = path.join(__dirname, "..", "skills", prompt.name, "SKILL.md");
+      const file = path.join(__dirname, "..", "plugins", "testingbot", "skills", prompt.name, "SKILL.md");
       const body = fs.readFileSync(file, "utf8");
       expect(body).toMatch(new RegExp(`^---\\nname: ${prompt.name}\\ndescription: .+\\n---`));
     }

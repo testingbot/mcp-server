@@ -15,6 +15,13 @@ TestingBot's official Model Context Protocol (MCP) server implementation. This s
 
 **Claude Desktop**: download `testingbot-mcp-server-<version>.mcpb` from the [latest release](https://github.com/testingbot/mcp-server/releases/latest) and double-click it. Claude will set up the TestingBot MCP server automatically.
 
+**Claude Code plugin** (the server plus testing skills):
+
+```
+/plugin marketplace add testingbot/mcp-server
+/plugin install testingbot@testingbot
+```
+
 After install, either enter your key and secret from [TestingBot account settings](https://testingbot.com/members/user/security), or leave them blank and ask Claude to run `tb_login` to sign in from the browser.
 
 ## Features
@@ -753,7 +760,7 @@ and read-only **resources** a client can attach to a conversation:
 | `testingbot://builds/{buildId}` | Tests in a build (JSON) |
 | `testingbot://insights/flaky-tests` | Flaky tests over the last 30 days; `?time_range=7d` to change it |
 
-The same recipes ship as agent skills in [`skills/`](skills/) (one `SKILL.md` per task) for agents that load skills from files.
+The same recipes, plus workflow skills for running your suite on TestingBot, testing localhost, running Maestro flows and cross-browser checks, ship as agent skills in [`plugins/testingbot/skills/`](plugins/testingbot/skills/) (one `SKILL.md` per task) for agents that load skills from files.
 
 ## Usage Examples
 
