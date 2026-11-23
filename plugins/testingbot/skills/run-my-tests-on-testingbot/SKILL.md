@@ -5,7 +5,7 @@ description: Point an existing test suite (Playwright, Cypress, WebdriverIO, Sel
 
 # Run my tests on TestingBot
 
-Needs the TestingBot MCP server (`@testingbot/mcp-server`).
+Needs the TestingBot MCP server (`@testingbot/mcp-server`). If a tool says no credentials are configured, call `tb_login` (it opens a browser sign-in) and continue; never ask the user to paste a key or secret.
 
 1. Call `listTestFiles` with the project root to see the framework and the tests that exist. If nothing is detected, ask the user which framework they use.
 2. Call `setupTestingBot` with the project root. It returns the config snippet, install command and environment variables for that framework. It never edits files.
@@ -14,4 +14,4 @@ Needs the TestingBot MCP server (`@testingbot/mcp-server`).
 5. Run one small test first (a single spec on one browser), using the command from step 2. Check the result with `getTests`; on failure, follow the `why-did-my-test-fail` steps.
 6. Report what changed, how to run the suite on TestingBot, and the link to the test in the TestingBot dashboard.
 
-If no credentials are configured, call `tb_login` to sign in. Running tests uses the account's test minutes, so ask before running the whole suite.
+Running tests uses the account's test minutes, so ask before running the whole suite.

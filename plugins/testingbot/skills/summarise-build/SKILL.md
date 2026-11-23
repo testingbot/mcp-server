@@ -5,7 +5,7 @@ description: Summarise a TestingBot build (CI run) - pass/fail counts, failures 
 
 # Summarise a TestingBot build
 
-Needs the TestingBot MCP server (`@testingbot/mcp-server`).
+Needs the TestingBot MCP server (`@testingbot/mcp-server`). If a tool says no credentials are configured, call `tb_login` (it opens a browser sign-in) and continue; never ask the user to paste a key or secret.
 
 1. Find the build with `getBuilds` if you only have its name, then call `getTestsForBuild` (or read `testingbot://builds/<buildId>`).
 2. Count passed, failed and unknown tests and list the environments (browser/OS or device) they ran on.
