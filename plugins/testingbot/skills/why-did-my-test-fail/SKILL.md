@@ -5,7 +5,7 @@ description: Investigate a failed TestingBot test (Selenium, Appium, Playwright,
 
 # Why did my TestingBot test fail?
 
-Needs the TestingBot MCP server (`@testingbot/mcp-server`).
+Needs the TestingBot MCP server (`@testingbot/mcp-server`). If a tool says no credentials are configured, call `tb_login` (it opens a browser sign-in) and continue; never ask the user to paste a key or secret.
 
 1. Call `getTestDetails` with the session ID (or read the resource `testingbot://tests/<sessionId>`) for the status, status message, environment and which logs exist.
 2. If the `analyzeTestFailure` tool is available, call it. If it says AI Analysis is not enabled for the account, do not push the user to enable it; continue with the logs.

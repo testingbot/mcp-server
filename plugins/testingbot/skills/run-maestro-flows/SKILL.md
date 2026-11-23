@@ -5,7 +5,7 @@ description: Upload a mobile app (APK/IPA/app zip) and Maestro flows to TestingB
 
 # Run Maestro flows on TestingBot
 
-Needs the TestingBot MCP server (`@testingbot/mcp-server`).
+Needs the TestingBot MCP server (`@testingbot/mcp-server`). If a tool says no credentials are configured, call `tb_login` (it opens a browser sign-in) and continue; never ask the user to paste a key or secret.
 
 1. Find the app build and the flows. `listTestFiles` with the project root lists Maestro flows (`.maestro/` or `*.yaml`). Ask for the app path if it is not obvious (Android `.apk`, iOS simulator `.zip` or real-device `.ipa`).
 2. If flows need writing or fixing, call `maestroCheatSheet` first.

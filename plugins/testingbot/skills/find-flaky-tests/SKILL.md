@@ -5,7 +5,7 @@ description: Find flaky TestingBot tests (tests that both passed and failed rece
 
 # Find flaky TestingBot tests
 
-Needs the TestingBot MCP server (`@testingbot/mcp-server`).
+Needs the TestingBot MCP server (`@testingbot/mcp-server`). If a tool says no credentials are configured, call `tb_login` (it opens a browser sign-in) and continue; never ask the user to paste a key or secret.
 
 1. Read the resource `testingbot://insights/flaky-tests` (add `?time_range=7d` for a shorter window; the default is 30 days). It lists test names with pass rate and run counts, most flaky first.
 2. For the top 5, call `getTests`, pick a recent failed and a recent passed run of each, and call `getFailureLogs` with `failuresOnly: true` on the failed one.

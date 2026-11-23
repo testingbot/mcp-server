@@ -5,7 +5,7 @@ description: Open a site running on localhost or a private network in a real rem
 
 # Test a local site on TestingBot
 
-Needs the TestingBot MCP server (`@testingbot/mcp-server`) and Java 17+ on the machine (for the tunnel).
+Needs the TestingBot MCP server (`@testingbot/mcp-server`) and Java 17+ on the machine (for the tunnel). If a tool says no credentials are configured, call `tb_login` (it opens a browser sign-in) and continue; never ask the user to paste a key or secret.
 
 1. Confirm the local URL (for example `http://localhost:3000`) and that the dev server is running.
 2. Call `startTunnel`. It waits until the tunnel is ready (up to a minute the first time) and returns a tunnel identifier.
