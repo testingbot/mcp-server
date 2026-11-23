@@ -5,7 +5,7 @@ description: Take screenshots of a page in many browsers and devices at once on 
 
 # Cross-browser visual check
 
-Needs the TestingBot MCP server (`@testingbot/mcp-server`).
+Needs the TestingBot MCP server (`@testingbot/mcp-server`). If a tool says no credentials are configured, call `tb_login` (it opens a browser sign-in) and continue; never ask the user to paste a key or secret.
 
 1. Get the URL. If it is `localhost` or private, call `startTunnel` first; screenshots go through the running tunnel.
 2. Pick 4 to 8 targets with `getBrowsers`: the latest Chrome, Firefox, Edge and Safari, plus one or two mobile devices and an older version if the user cares about it. Ask if the user has a list.

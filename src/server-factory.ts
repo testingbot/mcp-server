@@ -74,6 +74,9 @@ export class TestingBotMcpServer {
           prompts: {},
           resources: {},
         },
+        instructions: TestingBotMcpServer.instructions(
+          Boolean(config["testingbot-key"] && config["testingbot-secret"])
+        ),
       }
     );
 
@@ -187,6 +190,21 @@ export class TestingBotMcpServer {
     const parsed = parseToolArgs(tool.schema, toolArgs);
     if (!parsed.success) return invalidArgsResult(toolName, parsed.message);
     return tool.handler(parsed.data);
+  }
+
+  // Sent to the client on initialize. When the server starts without
+  // credentials, tell the agent to sign in first instead of letting it learn
+  // that from a failed tool call.
+  static instructions(hasCredentials: boolean): string {
+    const lines = [
+      "TestingBot is a cloud of real browsers and real iOS/Android devices. Use these tools to run and inspect tests (Selenium, Appium, Playwright, Maestro, Espresso, XCUITest), drive a remote browser or device step by step, take cross-browser screenshots, open a tunnel to localhost and analyse failed tests and builds.",
+    ];
+    if (!hasCredentials) {
+      lines.push(
+        "No TestingBot credentials are configured yet. Before using any other tool, call tb_login: it opens a TestingBot sign-in page in the user's browser and saves the credentials once they approve. Never ask the user to paste their API key or secret into the chat."
+      );
+    }
+    return lines.join("\n\n");
   }
 
   private hasCredentials(): boolean {

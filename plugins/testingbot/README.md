@@ -9,7 +9,7 @@ Run and debug tests on [TestingBot](https://testingbot.com)'s cloud of real brow
 /plugin install testingbot@testingbot
 ```
 
-Then sign in: ask Claude to "sign in to TestingBot". The `tb_login` tool opens a browser sign-in and stores the credentials in `~/.testingbot/credentials`. If `TESTINGBOT_KEY` and `TESTINGBOT_SECRET` are already set in your environment (keys from [account settings](https://testingbot.com/members/user/security)), or you have signed in before, the server uses those and there is nothing to do.
+Then sign in. The first time you use it, Claude runs `tb_login` for you (or ask it to "sign in to TestingBot"). It opens a browser sign-in and stores the credentials in `~/.testingbot/credentials`. If `TESTINGBOT_KEY` and `TESTINGBOT_SECRET` are already set in your environment (keys from [account settings](https://testingbot.com/members/user/security)), or you have signed in before, the server uses those and there is nothing to do.
 
 ## What it adds
 

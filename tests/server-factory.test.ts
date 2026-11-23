@@ -220,3 +220,29 @@ describe("TestingBotMcpServer.handleToolCall (degraded-mode credential gate)", (
     expect(handler).toHaveBeenCalledWith({ anything: 1 });
   });
 });
+
+describe("TestingBotMcpServer.instructions", () => {
+  it("tells the agent to run tb_login first when no credentials are configured", () => {
+    const text = TestingBotMcpServer.instructions(false);
+    expect(text).toContain("call tb_login");
+    expect(text).toContain("Never ask the user to paste");
+  });
+
+  it("leaves out the sign-in step when credentials are configured", () => {
+    const text = TestingBotMcpServer.instructions(true);
+    expect(text).toContain("TestingBot");
+    expect(text).not.toContain("tb_login");
+  });
+
+  it("sends the instructions to the client on initialize", async () => {
+    const { Client } = await import("@modelcontextprotocol/sdk/client/index.js");
+    const { InMemoryTransport } = await import("@modelcontextprotocol/sdk/inMemory.js");
+    const server = new TestingBotMcpServer({}, { "testingbot-key": "", "testingbot-secret": "" });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await (server as any).server.connect(serverTransport);
+    const client = new Client({ name: "test", version: "1" });
+    await client.connect(clientTransport);
+    expect(client.getInstructions()).toContain("call tb_login");
+    await client.close();
+  });
+});
