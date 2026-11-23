@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// Mirrors package.json#version into manifest.json, server.json, the Claude
-// Code plugin and the Gemini CLI extension (their version and the npx package
-// they pin) so MCPB bundles, the
+// Mirrors package.json#version into manifest.json, server.json, the plugin
+// manifests (Claude Code, Cursor, Agent Plugins/Kiro) and the Gemini CLI
+// extension (their version and the npx package they pin) so MCPB bundles, the
 // MCP registry entry and the plugin never drift from the npm release.
 // Run modes:
 //   node scripts/sync-version.mjs          → rewrite files in place
@@ -50,6 +50,30 @@ const targets = [
   },
   {
     path: resolve(repoRoot, "plugins/testingbot/.mcp.json"),
+    apply: (data) => {
+      const server = data.mcpServers.testingbot;
+      server.args = server.args.map((a) =>
+        a.startsWith("@testingbot/mcp-server@") ? `@testingbot/mcp-server@${version}` : a
+      );
+      return data;
+    },
+  },
+  {
+    path: resolve(repoRoot, "plugins/testingbot/.cursor-plugin/plugin.json"),
+    apply: (data) => {
+      data.version = version;
+      return data;
+    },
+  },
+  {
+    path: resolve(repoRoot, "plugins/testingbot/plugin.json"),
+    apply: (data) => {
+      data.version = version;
+      return data;
+    },
+  },
+  {
+    path: resolve(repoRoot, "plugins/testingbot/mcp.json"),
     apply: (data) => {
       const server = data.mcpServers.testingbot;
       server.args = server.args.map((a) =>

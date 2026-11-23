@@ -61,6 +61,7 @@ node_modules/**/man/
 /gemini-extension.json
 /GEMINI.md
 /.claude-plugin/
+/.cursor-plugin/
 
 # Container / directory files.
 Dockerfile

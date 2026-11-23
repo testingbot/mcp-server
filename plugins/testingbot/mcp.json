@@ -1,0 +1,13 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "testingbot": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@testingbot/mcp-server@1.4.3"
+      ]
+    }
+  }
+}

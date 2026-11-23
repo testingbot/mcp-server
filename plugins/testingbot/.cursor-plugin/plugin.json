@@ -1,0 +1,28 @@
+{
+  "name": "testingbot",
+  "displayName": "TestingBot",
+  "version": "1.4.3",
+  "description": "Run and debug tests on TestingBot's cloud of real browsers and mobile devices from your coding agent: the official TestingBot MCP server plus skills to run your suite in the cloud, test localhost through a tunnel, run Maestro flows, check pages across browsers and explain failed tests.",
+  "author": {
+    "name": "TestingBot",
+    "email": "info@testingbot.com"
+  },
+  "publisher": "TestingBot",
+  "homepage": "https://testingbot.com",
+  "repository": "https://github.com/testingbot/mcp-server",
+  "license": "MIT",
+  "logo": "icon.png",
+  "keywords": [
+    "testing",
+    "selenium",
+    "appium",
+    "playwright",
+    "maestro",
+    "cross-browser",
+    "mobile",
+    "real-devices",
+    "qa",
+    "mcp"
+  ],
+  "category": "integrations"
+}

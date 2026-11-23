@@ -1,0 +1,17 @@
+{
+  "name": "testingbot",
+  "owner": {
+    "name": "TestingBot",
+    "email": "info@testingbot.com"
+  },
+  "metadata": {
+    "description": "TestingBot plugins for Cursor."
+  },
+  "plugins": [
+    {
+      "name": "testingbot",
+      "source": "plugins/testingbot",
+      "description": "Run and debug tests on TestingBot's real browsers and mobile devices: the TestingBot MCP server plus testing workflow skills."
+    }
+  ]
+}

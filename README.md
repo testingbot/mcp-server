@@ -22,6 +22,10 @@ TestingBot's official Model Context Protocol (MCP) server implementation. This s
 /plugin install testingbot@testingbot
 ```
 
+**Cursor plugin** (the server plus the same skills): install **TestingBot** from the [Cursor Marketplace](https://cursor.com/marketplace) once it's listed. Teams can already add this repository as a team marketplace (Dashboard → Plugins → Add Marketplace → Import from Repo).
+
+**Kiro power** (the server plus the same skills): in Kiro, open **Powers → Add Custom Power → Import power from GitHub** and enter `https://github.com/testingbot/mcp-server/tree/main/plugins/testingbot`.
+
 **Gemini CLI extension** (the server plus the same skills):
 
 ```
