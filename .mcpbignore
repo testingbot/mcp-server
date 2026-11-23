@@ -58,6 +58,8 @@ node_modules/**/man/
 # Agent skill files (docs only, not used at runtime).
 /skills/
 /plugins/
+/gemini-extension.json
+/GEMINI.md
 /.claude-plugin/
 
 # Container / directory files.
