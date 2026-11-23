@@ -11,6 +11,15 @@ Run and debug tests on [TestingBot](https://testingbot.com)'s cloud of real brow
 
 Then sign in. The first time you use it, Claude runs `tb_login` for you (or ask it to "sign in to TestingBot"). It opens a browser sign-in and stores the credentials in `~/.testingbot/credentials`. If `TESTINGBOT_KEY` and `TESTINGBOT_SECRET` are already set in your environment (keys from [account settings](https://testingbot.com/members/user/security)), or you have signed in before, the server uses those and there is nothing to do.
 
+## Try it
+
+- "Sign in to TestingBot and show me which iPhones I can test on."
+- "Open http://localhost:3000 in Safari on macOS on TestingBot and check that the signup form works."
+- "Run my Playwright tests on TestingBot in Chrome, Firefox and Edge."
+- "Take screenshots of https://example.com in the latest Chrome, Safari and on an Android phone, and point out layout differences."
+- "Why did TestingBot test 0a1b2c3d fail?" (use a session ID from your dashboard)
+- "Which of my tests were flaky in the last week?"
+
 ## What it adds
 
 **The TestingBot MCP server** ([`@testingbot/mcp-server`](https://www.npmjs.com/package/@testingbot/mcp-server), run with `npx`, version pinned per plugin release). Its tools let Claude drive a remote browser or device step by step, start live sessions, take cross-browser screenshots, run Maestro, Espresso and XCUITest suites, open tunnels to localhost, and read tests, builds, logs and failure analysis. See the [tool list](https://github.com/testingbot/mcp-server#available-tools).
