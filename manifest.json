@@ -2,7 +2,7 @@
   "manifest_version": "0.3",
   "name": "@testingbot/mcp-server",
   "display_name": "TestingBot",
-  "version": "1.4.3",
+  "version": "1.4.4",
   "description": "Run and manage browser and mobile tests on TestingBot's cloud of real browsers and devices from Claude.",
   "long_description": "The official TestingBot extension lets Claude work with [TestingBot](https://testingbot.com), a cloud of real desktop browsers, emulators and real mobile devices.\n\n- **Drive a remote browser or device**: open Chrome, Firefox, Safari or Edge on any OS, or a real iPhone or Android device, then navigate, click, type and take screenshots.\n- **Test localhost and private sites** through a TestingBot Tunnel started from Claude.\n- **Run test suites**: Maestro, Espresso and XCUITest on real devices; upload apps to TestingBot Storage.\n- **Investigate failures**: list tests and builds, read logs, and get an AI analysis of why a test failed.\n- **Cross-browser screenshots, live sessions, visual and accessibility checks, team and account management.**\n\nSign in with your TestingBot API key and secret, or leave them empty and ask Claude to \"log me in to TestingBot\" (browser sign-in). Sessions and test runs use your TestingBot minutes; a free trial is available.",
   "author": {

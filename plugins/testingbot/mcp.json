@@ -6,7 +6,7 @@
       "command": "npx",
       "args": [
         "-y",
-        "@testingbot/mcp-server@1.4.3"
+        "@testingbot/mcp-server@1.4.4"
       ]
     }
   }

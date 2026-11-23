@@ -1,7 +1,7 @@
 {
   "name": "testingbot",
   "displayName": "TestingBot",
-  "version": "1.4.3",
+  "version": "1.4.4",
   "description": "Run and debug tests on TestingBot's cloud of real browsers and mobile devices from your coding agent: the official TestingBot MCP server plus skills to run your suite in the cloud, test localhost through a tunnel, run Maestro flows, check pages across browsers and explain failed tests.",
   "author": {
     "name": "TestingBot",
