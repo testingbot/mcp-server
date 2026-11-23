@@ -1,13 +1,13 @@
 {
   "name": "testingbot",
-  "version": "1.4.2",
+  "version": "1.4.3",
   "description": "Run and debug tests on TestingBot's real browsers and real iOS/Android devices: drive a remote browser or device, run Selenium, Playwright, Appium and Maestro tests, test localhost through a tunnel, and analyse failed tests.",
   "mcpServers": {
     "testingbot": {
       "command": "npx",
       "args": [
         "-y",
-        "@testingbot/mcp-server@1.4.2"
+        "@testingbot/mcp-server@1.4.3"
       ],
       "timeout": 120000
     }

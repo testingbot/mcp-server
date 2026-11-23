@@ -2,7 +2,7 @@
   "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
   "name": "testingbot",
   "displayName": "TestingBot",
-  "version": "1.4.2",
+  "version": "1.4.3",
   "description": "Run and debug tests on TestingBot's cloud of real browsers and mobile devices from Claude Code: the official TestingBot MCP server plus skills to run your suite in the cloud, test localhost through a tunnel, run Maestro flows, check pages across browsers and explain failed tests.",
   "author": {
     "name": "TestingBot",
