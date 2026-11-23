@@ -22,6 +22,14 @@ TestingBot's official Model Context Protocol (MCP) server implementation. This s
 /plugin install testingbot@testingbot
 ```
 
+**Gemini CLI extension** (the server plus the same skills):
+
+```
+gemini extensions install https://github.com/testingbot/mcp-server
+```
+
+Gemini CLI doesn't pass your shell's environment variables to extensions, so sign in with `tb_login` (Gemini runs it when needed), which saves the credentials in `~/.testingbot/credentials`.
+
 After install, either enter your key and secret from [TestingBot account settings](https://testingbot.com/members/user/security), or leave them blank and ask Claude to run `tb_login` to sign in from the browser.
 
 ## Features
