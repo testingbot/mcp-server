@@ -33,3 +33,4 @@ coverage/
 
 # Generated files
 *.mcpb
+/zed/target/

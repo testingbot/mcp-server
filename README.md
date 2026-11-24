@@ -34,6 +34,8 @@ gemini extensions install https://github.com/testingbot/mcp-server
 
 Gemini CLI doesn't pass your shell's environment variables to extensions, so sign in with `tb_login` (Gemini runs it when needed), which saves the credentials in `~/.testingbot/credentials`.
 
+**Zed**: install the **TestingBot MCP Server** extension from Zed's extensions page once it's listed (the source is in [`zed/`](zed/)). Leave the key fields empty and ask the agent to sign in with `tb_login`.
+
 After install, either enter your key and secret from [TestingBot account settings](https://testingbot.com/members/user/security), or leave them blank and ask Claude to run `tb_login` to sign in from the browser.
 
 ## Features
