@@ -1,0 +1,6 @@
+{
+  /// Optional. Leave both empty and ask the agent to sign in:
+  /// it runs the `tb_login` tool, which opens a TestingBot sign-in page.
+  "testingbot_key": "",
+  "testingbot_secret": ""
+}

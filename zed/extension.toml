@@ -1,0 +1,10 @@
+id = "mcp-server-testingbot"
+name = "TestingBot MCP Server"
+description = "Run and debug tests on TestingBot's real browsers and iOS/Android devices from the Zed agent."
+version = "0.1.0"
+schema_version = 1
+authors = ["TestingBot <info@testingbot.com>"]
+repository = "https://github.com/testingbot/mcp-server"
+
+[context_servers.mcp-server-testingbot]
+name = "TestingBot MCP Server"

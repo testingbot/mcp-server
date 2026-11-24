@@ -67,3 +67,6 @@ node_modules/**/man/
 Dockerfile
 .dockerignore
 llms-install.md
+
+# Zed extension (built by Zed from the repo, not part of the bundle).
+/zed/
